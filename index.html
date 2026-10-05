@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <!-- Google Analytics ※みつきが全ページに貼った魂のタグ -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-GNTX973GET"></script>
   <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag("js",new Date());gtag("config","G-GNTX973GET");</script>
@@ -27,6 +28,7 @@
     <div class="header-actions">
       <span class="status-dot"><i></i><span id="localStatus">ブラウザ内で処理</span></span>
       <button id="langBtn" class="ghost-btn lang-btn" type="button">EN</button>
+      <button id="shareBtn" class="ghost-btn" type="button">共有</button>
       <button id="sampleBtn" class="ghost-btn" type="button">サンプル</button>
       <button id="clearBtn" class="ghost-btn" type="button">クリア</button>
     </div>
@@ -34,13 +36,13 @@
 
   <main class="shell">
     <section class="hero">
-      <div class="eyebrow"><span>01</span> 差分解析</div>
-      <h1>何が変わった？<br><em>壊れた場所を探す。</em></h1>
-      <p>変更前と変更後のコードを並べて、追加・削除された行を比較。さらに変更後のコードに構文エラーがないかチェックします。</p>
+      <div class="eyebrow"><span>01</span> <b id="eyebrowText">差分解析</b></div>
+      <h1 id="heroTitle">何が変わった？<br><em>壊れた場所を探す。</em></h1>
+      <p id="heroText">変更前と変更後のコードを並べて、追加・削除された行を比較。さらに変更後のコードに構文エラーがないかチェックします。</p>
     </section>
 
     <section class="editor-card">
-      <div class="toolbar"><label for="languageSelect">チェック対象</label><select id="languageSelect"><option value="javascript">JavaScript</option><option value="typescript">TypeScript</option><option value="python">Python</option><option value="html">HTML</option><option value="css">CSS</option></select><span id="languageNote">差分比較はすべてのテキストで利用できます。</span></div>
+      <div class="toolbar"><label for="languageSelect">チェック対象</label><select id="languageSelect"><option value="javascript">JavaScript</option><option value="typescript">TypeScript</option><option value="python">Python</option><option value="html">HTML</option><option value="css">CSS</option><option value="php">PHP</option><option value="ruby">Ruby</option><option value="c">C</option><option value="cpp">C++</option><option value="csharp">C#</option><option value="java">Java</option><option value="go">Go</option><option value="rust">Rust</option><option value="json">JSON</option></select><span id="languageNote">差分比較はすべてのテキストで利用できます。</span></div>
       <div class="editor-head">
         <div class="editor-title"><span class="step">A</span><div><strong id="beforeLabel">変更前</strong><small id="beforeSub">元のコード</small></div></div>
         <div class="editor-title"><span class="step after">B</span><div><strong id="afterLabel">変更後</strong><small id="afterSub">修正したコード</small></div></div>
@@ -72,18 +74,18 @@
     <section id="result" class="result hidden">
       <div class="section-label"><span>02</span> <b id="mapLabel">変更マップ</b></div>
       <div class="stats-grid">
-        <article><span class="stat-icon add">＋</span><div><small id="addedLabel">追加</small><strong id="addedStat">0</strong><span>行</span></div></article>
-        <article><span class="stat-icon del">−</span><div><small id="removedLabel">削除</small><strong id="removedStat">0</strong><span>行</span></div></article>
-        <article><span class="stat-icon edit">↕</span><div><small id="changedLabel">変更ブロック</small><strong id="changedStat">0</strong><span>箇所</span></div></article>
+        <article><span class="stat-icon add">＋</span><div><small id="addedLabel">追加</small><strong id="addedStat">0</strong><span id="addedUnit">行</span></div></article>
+        <article><span class="stat-icon del">−</span><div><small id="removedLabel">削除</small><strong id="removedStat">0</strong><span id="removedUnit">行</span></div></article>
+        <article><span class="stat-icon edit">↕</span><div><small id="changedLabel">変更ブロック</small><strong id="changedStat">0</strong><span id="changedUnit">箇所</span></div></article>
       </div>
       <div class="diff-panel">
-        <div class="panel-head"><strong>差分</strong><div class="diff-tools"><span id="diffSummary"></span><button id="unifiedViewBtn" class="view-btn active" type="button">統合表示</button><button id="sideViewBtn" class="view-btn" type="button">左右比較</button></div></div>
-        <div id="diffOutput" class="diff-output"></div>
+        <div class="panel-head"><strong id="diffTitle">差分</strong><div class="diff-tools"><span id="diffSummary"></span><button id="unifiedViewBtn" class="view-btn active" type="button">統合表示</button><button id="sideViewBtn" class="view-btn" type="button">左右比較</button></div></div>
+        <div class="diff-nav"><button id="prevDiffBtn" type="button">↑ 前の変更</button><span id="diffNavCount">0 / 0</span><button id="nextDiffBtn" type="button">次の変更 ↓</button></div><div id="diffOutput" class="diff-output"></div>
       </div>
     </section>
 
     <section id="syntaxSection" class="syntax hidden">
-      <div class="section-label"><span>03</span> <b id="checkLabel">エラーチェック</b></div><div id="suspectsSection" class="suspects hidden"><div class="section-label"><span>04</span> <b>バグ原因候補</b></div><div id="suspectsCard" class="suspects-card"></div></div>
+      <div class="section-label"><span>03</span> <b id="checkLabel">エラーチェック</b></div><div id="suspectsSection" class="suspects hidden"><div class="section-label"><span>04</span> <b id="suspectLabel">バグ原因候補</b></div><div id="suspectsCard" class="suspects-card"></div></div>
       <div id="syntaxCard" class="syntax-card"></div>
     </section>
 
