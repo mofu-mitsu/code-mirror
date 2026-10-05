@@ -162,7 +162,25 @@ function renderUnifiedDiff(rows){
   return html;
 }
 
-function renderSideBySideDiff(rows){return buildSideRows(rows).map(pair=>{const left=pair.left,right=pair.right;return"<div class=\"side-row "+pair.type+"\"><div class=\"side-cell "+(left?.type||"")+"\"><span class=\"side-ln\">"+(left?.left||"")+"</span><code>"+(left?escapeHtml(left.text):"")+"</code></div><div class=\"side-cell "+(right?.type||"")+"\"><span class=\"side-ln\">"+(right?.right||"")+"</span><code>"+(right?escapeHtml(right.text):"")+"</code></div></div>";}).join("");}
+function renderSideBySideDiff(rows){
+  let index=0,html="";
+  for(let i=0;i<rows.length;i++){
+    const row=rows[i];
+    if(row.type==="del"&&rows[i+1]?.type==="add"){
+      const right=rows[i+1],pair=charDiffPair(row.text,right.text);
+      html+="<div class=\"side-row change\" data-diff-index=\""+index+"\"><div class=\"side-cell del\"><span class=\"side-ln\">"+row.left+"</span><code>"+pair.left+"</code></div><div class=\"side-cell add\"><span class=\"side-ln\">"+right.right+"</span><code>"+pair.right+"</code></div></div>";
+      i++;index++;continue;
+    }
+    if(row.type==="add"||row.type==="del"){
+      const cls=row.type==="add"?"add":"del";
+      html+="<div class=\"side-row "+cls+"\" data-diff-index=\""+index+"\"><div class=\"side-cell "+cls+"\"><span class=\"side-ln\">"+(row.left||row.right||"")+"</span><code>"+(row.type==="add"?'<mark class=\"inline-add\">'+escapeHtml(row.text)+"</mark>":'<mark class=\"inline-del\">'+escapeHtml(row.text)+"</mark>")+"</code></div><div class=\"side-cell\"><span class=\"side-ln\"></span><code></code></div></div>";
+      index++;continue;
+    }
+    html+="<div class=\"side-row ctx\"><div class=\"side-cell ctx\"><span class=\"side-ln\">"+row.left+"</span><code>"+escapeHtml(row.text)+"</code></div><div class=\"side-cell ctx\"><span class=\"side-ln\">"+row.right+"</span><code>"+escapeHtml(row.text)+"</code></div></div>";
+  }
+  return html;
+}
+
 function renderDiff(){const uiLang=document.documentElement.lang==="en"?"en":"ja",rows=diffLines(beforeEl.value,afterEl.value),groups=groupChanges(rows),added=rows.filter(row=>row.type==="add").length,removed=rows.filter(row=>row.type==="del").length,changed=groups.filter(group=>group.hasAdd&&group.hasDel).length;document.getElementById("addedStat").textContent=added;document.getElementById("removedStat").textContent=removed;document.getElementById("changedStat").textContent=changed;document.getElementById("diffSummary").textContent=uiLang==="en"?(added===0&&removed===0?"No changes":"Added "+added+" · Removed "+removed+" · Changed "+changed):(added===0&&removed===0?"変更なし":"追加 "+added+"行 · 削除 "+removed+"行 · 変更 "+changed+"箇所");const output=document.getElementById("diffOutput");if(!rows.some(row=>row.type!=="ctx")){output.innerHTML="<div class=\"no-diff\">"+(uiLang==="en"?"No changes.":"変更はありません。")+"</div>";return;}output.classList.toggle("side-by-side",diffViewMode==="side");output.innerHTML=diffViewMode==="side"?renderSideBySideDiff(rows):renderUnifiedDiff(rows);}
 
 function findStructuralError(code) {
@@ -343,20 +361,33 @@ function scrollToLine(line){
   afterEl.scrollTop=Math.max(0,(line-1)*lineHeight);
   beforeEl.scrollTop=Math.max(0,(line-1)*lineHeight);
 }
+function clearDiffActive(){
+  document.querySelectorAll("#diffOutput [data-diff-index]").forEach(node=>node.classList.remove("is-active-diff"));
+}
 function setDiffTarget(index){
   if(!currentDiffTargets.length)return;
   currentDiffIndex=(index+currentDiffTargets.length)%currentDiffTargets.length;
   const target=currentDiffTargets[currentDiffIndex];
   scrollToLine(target.line);
-  const nodes=[...document.querySelectorAll("#diffOutput .diff-line.add,#diffOutput .diff-line.del,#diffOutput .side-row.add,#diffOutput .side-row.del,#diffOutput .side-row.change")];
-  nodes[currentDiffIndex]?.scrollIntoView({behavior:"smooth",block:"center"});
+  clearDiffActive();
+  const nodes=document.querySelectorAll("#diffOutput [data-diff-index=\""+currentDiffIndex+"\"]");
+  nodes.forEach(node=>node.classList.add("is-active-diff"));
+  nodes[0]?.scrollIntoView({behavior:"smooth",block:"center"});
   document.getElementById("diffNavCount").textContent=(currentDiffIndex+1)+" / "+currentDiffTargets.length;
 }
 function prepareDiffNavigation(rows){
-  currentDiffTargets=rows.filter(row=>row.type!=="ctx").map(row=>({line:row.right||row.left}));
+  currentDiffTargets=[];
+  let index=0;
+  for(const row of rows){
+    if(row.type!=="ctx"){
+      currentDiffTargets.push({line:row.right||row.left,index});
+      index++;
+    }
+  }
   currentDiffIndex=-1;
   document.getElementById("diffNavCount").textContent=currentDiffTargets.length?"0 / "+currentDiffTargets.length:"0 / 0";
 }
+
 function renderSuspects(rows,groups,check){
   const section=document.getElementById("suspectsSection"),card=document.getElementById("suspectsCard");
   if(!section||!card)return;
@@ -382,7 +413,7 @@ async function renderSyntax(){
   const list=currentErrors.map((e,i)=>"<button class=\"error-item\" type=\"button\" data-error-index=\""+i+"\"><span>"+(i+1)+"</span><strong>"+(e.line?(en?"Line ":"")+" "+e.line+(en?"":"行目"):(en?"Unknown position":"位置不明"))+"</strong><code>"+escapeHtml(e.message||"Syntax error")+"</code></button>").join("");
   const locationText=check.line?(en?"After line "+check.line+(check.column?" (column "+check.column+")":""):"変更後コードの "+check.line+"行目付近"+(check.column?"（"+check.column+"列目）":"")):(en?"Error position could not be determined.":"エラー位置を特定できませんでした。");
   card.innerHTML="<div class=\"syntax-error\"><span class=\"syntax-icon\">!</span><div><strong>"+(en?"Syntax errors detected.":"構文エラーを検出しました。")+"</strong><small>"+escapeHtml(check.message)+"</small></div></div><ul class=\"error-list\"><li>"+(en?"Estimated position: ":"推定位置：")+escapeHtml(locationText)+"</li></ul>"+nav+"<div class=\"error-items\">"+list+"</div>";
-  const goError=(idx)=>{if(!currentErrors.length)return;currentErrorIndex=(idx+currentErrors.length)%currentErrors.length;const e=currentErrors[currentErrorIndex];scrollToLine(e.line);document.getElementById("errorNavCount")&&(document.getElementById("errorNavCount").textContent=(currentErrorIndex+1)+" / "+currentErrors.length);};
+  const goError=(idx)=>{if(!currentErrors.length)return;currentErrorIndex=(idx+currentErrors.length)%currentErrors.length;const e=currentErrors[currentErrorIndex];scrollToLine(e.line);card.querySelectorAll(".error-item").forEach((node,i)=>node.classList.toggle("is-active-error",i===currentErrorIndex));const active=card.querySelector(".error-item.is-active-error");active?.scrollIntoView({behavior:"smooth",block:"nearest"});document.getElementById("errorNavCount")&&(document.getElementById("errorNavCount").textContent=(currentErrorIndex+1)+" / "+currentErrors.length);};
   card.querySelectorAll(".error-item").forEach(btn=>btn.addEventListener("click",()=>goError(Number(btn.dataset.errorIndex))));
   document.getElementById("prevErrorBtn")?.addEventListener("click",()=>goError(currentErrorIndex-1));
   document.getElementById("nextErrorBtn")?.addEventListener("click",()=>goError(currentErrorIndex+1));
