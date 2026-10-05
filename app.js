@@ -220,7 +220,7 @@ function checkHTMLTags(code){
 function checkHTML(code){
   if(!code.trim())return{ok:true,message:"チェックするコードがありません。",errors:[]};
   const errors=[];
-  const tagPattern=/<!--(?:[\\s\\S]*?)-->|<![^>]*>|<\\s*(\\/?)\\s*([A-Za-z][A-Za-z0-9:-]*)([^>]*)>/g;
+  const tagPattern=/<!--(?:[\s\S]*?)-->|<![^>]*>|<\s*(\/?)\s*([A-Za-z][A-Za-z0-9:-]*)([^>]*)>/g;
   const stack=[];
   const voidTags=new Set(["area","base","br","col","embed","hr","img","input","link","meta","param","source","track","wbr"]);
   let match,lastEnd=0;
@@ -228,7 +228,7 @@ function checkHTML(code){
     const full=match[0];
     if(full.startsWith("<!--")){lastEnd=tagPattern.lastIndex;continue;}
     if(full.startsWith("<!")){
-      if(!/^<!doctype\\s+html\\s*>$/i.test(full.trim())){
+      if(!/^<!doctype\s+html\s*>$/i.test(full.trim())){
         const p=indexToLocation(code,match.index);
         errors.push({message:"DOCTYPEの形式を確認してください。",line:p.line,column:p.column,index:match.index});
       }
