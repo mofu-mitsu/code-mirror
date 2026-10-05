@@ -3,8 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="CODE MIRROR — Compare before and after code, inspect diffs, and check HTML, CSS, and JavaScript for errors.">
-  <title>CODE MIRROR — Code Compare Lab</title>
+  <meta name="description" content="CODE MIRRORは、変更前・変更後のコードを比較し、差分・構文エラー・バグ原因候補を調査できる開発者向けオンラインコード比較ツールです。JavaScript、TypeScript、Python、HTML、CSS、PHP、Ruby、C/C++、C#、Java、Go、Rust、JSONに対応。">
+  <meta name="keywords" content="コード比較,コード差分,Git diff,構文エラー,バグ調査,JavaScript,TypeScript,Python,HTML,CSS,PHP,Ruby,C++,C#,Java,Go,Rust,JSON,開発者ツール">
+  <meta name="author" content="Mofu Mitsu">
+  <meta name="robots" content="index,follow,max-image-preview:large">
+  <meta name="theme-color" content="#6d5dfc">
+  <link rel="canonical" href="https://mofu-mitsu.github.io/code-mirror/">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://mofu-mitsu.github.io/code-mirror/">
+  <meta property="og:title" content="CODE MIRROR｜コード差分・構文エラーを調べる開発者向けツール">
+  <meta property="og:description" content="変更前と変更後のコードを比較。差分を見つけ、構文エラーとバグ原因候補を調査できるオンラインコード比較ラボ。">
+  <meta property="og:image" content="https://mofu-mitsu.github.io/code-mirror/ogp.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:site_name" content="CODE MIRROR">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="CODE MIRROR｜コード差分・構文エラーを調べる開発者向けツール">
+  <meta name="twitter:description" content="コードの変更箇所、構文エラー、バグ原因候補をまとめて調査する開発者向けオンラインツール。">
+  <meta name="twitter:image" content="https://mofu-mitsu.github.io/code-mirror/ogp.png">
+  <title>CODE MIRROR｜コード差分・構文エラーを調べる開発者向けツール</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -28,6 +45,7 @@
     <div class="header-actions">
       <span class="status-dot"><i></i><span id="localStatus">ブラウザ内で処理</span></span>
       <button id="langBtn" class="ghost-btn lang-btn" type="button">EN</button>
+      <button id="helpBtn" class="ghost-btn" type="button">ヘルプ</button>
       <button id="shareBtn" class="ghost-btn" type="button">共有</button>
       <button id="sampleBtn" class="ghost-btn" type="button">サンプル</button>
       <button id="clearBtn" class="ghost-btn" type="button">クリア</button>
@@ -42,7 +60,7 @@
     </section>
 
     <section class="editor-card">
-      <div class="toolbar"><label for="languageSelect">チェック対象</label><select id="languageSelect"><option value="javascript">JavaScript</option><option value="typescript">TypeScript</option><option value="python">Python</option><option value="html">HTML</option><option value="css">CSS</option><option value="php">PHP</option><option value="ruby">Ruby</option><option value="c">C</option><option value="cpp">C++</option><option value="csharp">C#</option><option value="java">Java</option><option value="go">Go</option><option value="rust">Rust</option><option value="json">JSON</option></select><span id="languageNote">差分比較はすべてのテキストで利用できます。</span></div>
+      <div class="toolbar"><div class="target-label"><span class="target-icon">✓</span><div><label for="languageSelect">チェック対象</label><small id="targetDescription">構文チェックする言語を選択</small></div></div><select id="languageSelect"><option value="javascript">JavaScript</option><option value="typescript">TypeScript</option><option value="python">Python</option><option value="html">HTML</option><option value="css">CSS</option><option value="php">PHP</option><option value="ruby">Ruby</option><option value="c">C</option><option value="cpp">C++</option><option value="csharp">C#</option><option value="java">Java</option><option value="go">Go</option><option value="rust">Rust</option><option value="json">JSON</option></select><span id="languageNote">差分比較はすべてのテキストで利用できます。</span></div>
       <div class="editor-head">
         <div class="editor-title"><span class="step">A</span><div><strong id="beforeLabel">変更前</strong><small id="beforeSub">元のコード</small></div></div>
         <div class="editor-title"><span class="step after">B</span><div><strong id="afterLabel">変更後</strong><small id="afterSub">修正したコード</small></div></div>
@@ -93,6 +111,8 @@
       <span><span id="footerTitle">CODE MIRROR / 壊れたコードを観測する小さな研究室</span></span>
       <span><span id="footerLocal">入力したコードはブラウザ内だけで処理されます。</span></span>
     </footer>
+  <div id="helpModal" class="modal hidden" aria-hidden="true"><div class="modal-backdrop" data-close-help></div><div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="helpTitle"><button id="closeHelpBtn" class="modal-close" type="button" aria-label="閉じる">×</button><div class="modal-eyebrow">CODE MIRROR / HELP</div><h2 id="helpTitle">CODE MIRRORの使い方</h2><p id="helpIntro">コードの変更点と、変更後に発生した構文エラーをまとめて調査するためのツールです。</p><div class="help-grid"><article><b id="helpStep1Title">01　コードを入れる</b><p id="helpStep1">「変更前」に元のコード、「変更後」に修正したコードを貼り付けます。</p></article><article><b id="helpStep2Title">02　言語を選ぶ</b><p id="helpStep2">「チェック対象」から構文チェックしたい言語を選択します。差分比較だけなら言語は問いません。</p></article><article><b id="helpStep3Title">03　比較する</b><p id="helpStep3">差分を表示し、変更ブロックを確認します。最初の変更箇所へ自動スクロールします。</p></article><article><b id="helpStep4Title">04　エラーを調べる</b><p id="helpStep4">構文エラーがあれば行・列と候補を表示。「次のエラー」「次の変更」で順番に移動できます。</p></article></div><div class="help-note" id="helpNote">入力したコードは基本的にブラウザ内で処理されます。共有機能はコードをURLに埋め込むため、共有URLの取り扱いには注意してください。</div></div></div>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <div class="affiliate-widget"><script type="text/javascript">rakuten_design="slide";rakuten_affiliateId="47f67ba0.34b43d0d.47f67ba1.f8c0f51e";rakuten_items="ctsmatch";rakuten_genreId="0";rakuten_size="468x160";rakuten_target="_blank";rakuten_theme="gray";rakuten_border="off";rakuten_auto_mode="on";rakuten_genre_title="off";rakuten_recommend="on";rakuten_ts="1791176546733";</script><script type="text/javascript" src="https://xml.affiliate.rakuten.co.jp/widget/js/rakuten_widget.js?20230106"></script></div>
 </main>
   <script src="app.js"></script>
