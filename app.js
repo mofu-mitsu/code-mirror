@@ -207,6 +207,21 @@ function renderSuspects(rows,groups,check){
     card.innerHTML=candidates.map((c,i)=>"<article class=\"suspect-item\"><span class=\"rank\">0"+(i+1)+"</span><div><strong>"+(c.distance===0?c.row.right+"行目の追加変更がエラー位置と一致しています。":"変更ブロック候補 #"+Math.min(groups.length,i+1))+"</strong><code>+ "+escapeHtml(c.row.text)+"</code></div></article>").join("")+"<p class=\"heuristic-note\">差分とエラー位置からの推定です。実行時バグを断定するものではありません。</p>";
   }else section.classList.add("hidden");
 }
+const UI_TEXT={
+ja:{brand:"コード比較ラボ",status:"ブラウザ内で処理",sample:"サンプル",clear:"クリア",eyebrow:"差分解析",title:"何が変わった？<br><em>壊れた場所を探す。</em>",hero:"変更前と変更後のコードを並べて、追加・削除された行を比較。さらに変更後のコードに構文エラーがないかチェックします。",target:"チェック対象",note:"差分比較はすべてのテキストで利用できます。",before:"変更前",beforeSub:"元のコード",after:"変更後",afterSub:"修正したコード",tab:"でインデント",mode:"行単位比較",compare:"比較して原因候補を探す",map:"変更マップ",add:"追加",remove:"削除",changed:"変更ブロック",check:"エラーチェック",suspect:"バグ原因候補",footer:"CODE MIRROR / 壊れたコードを観測する小さな研究室",local:"入力したコードはブラウザ内だけで処理されます。"},
+en:{brand:"CODE COMPARE LAB",status:"Runs in browser",sample:"SAMPLE",clear:"CLEAR",eyebrow:"DIFF ANALYSIS",title:"What changed?<br><em>Find where it broke.</em>",hero:"Compare before and after code, inspect added and removed lines, then check the edited code for syntax errors.",target:"CHECK LANGUAGE",note:"Diff comparison works with any text.",before:"BEFORE",beforeSub:"Original code",after:"AFTER",afterSub:"Edited code",tab:"for indentation",mode:"Line-based diff",compare:"COMPARE & FIND SUSPECTS",map:"CHANGE MAP",add:"ADDED",remove:"REMOVED",changed:"CHANGED BLOCKS",check:"ERROR CHECK",suspect:"LIKELY BUG SUSPECTS",footer:"CODE MIRROR / A small lab for observing broken code",local:"Your code is processed locally in this browser."}
+};
+function applyLocale(){
+  const x=UI_TEXT[document.documentElement.lang==="en"?"en":"ja"];
+  const map={brandSub:x.brand,localStatus:x.status,sampleBtn:x.sample,clearBtn:x.clear,eyebrowText:x.eyebrow,heroTitle:x.title,heroText:x.hero,languageLabel:x.target,languageNote:x.note,beforeLabel:x.before,beforeSub:x.beforeSub,afterLabel:x.after,afterSub:x.afterSub,tabHint:x.tab,compareText:x.compare,mapLabel:x.map,addedLabel:x.add,removedLabel:x.remove,changedLabel:x.changed,checkLabel:x.check,suspectLabel:x.suspect,footerTitle:x.footer,footerLocal:x.local};
+  Object.keys(map).forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=map[id];});
+  const lang=document.getElementById("languageSelect")?.value||"javascript";
+  const name=lang==="html"?"HTML":lang==="css"?"CSS":"JavaScript";
+  const mode=document.getElementById("compareMode");if(mode)mode.textContent=name+" · "+x.mode;
+  document.getElementById("langBtn").textContent=document.documentElement.lang==="ja"?"EN":"日本語";
+  document.title=document.documentElement.lang==="ja"?"CODE MIRROR — コード比較ラボ":"CODE MIRROR — Code Compare Lab";
+}
+
 function getSyntaxErrorLocation(error) {
   const message = String(error?.message || "");
   const stack = String(error?.stack || "");
@@ -336,6 +351,6 @@ document.getElementById("clearBtn").addEventListener("click", () => {
 updateCounts();
 
 
-document.getElementById("languageSelect")?.addEventListener("change",()=>{const v=document.getElementById("languageSelect").value;document.getElementById("compareMode").textContent=(v==="html"?"HTML":v==="css"?"CSS":"JavaScript")+" · 行単位比較";if(!result.classList.contains("hidden"))compare();});
-document.getElementById("langBtn")?.addEventListener("click",()=>{const next=document.documentElement.lang==="ja"?"en":"ja";document.documentElement.lang=next;document.getElementById("langBtn").textContent=next==="ja"?"EN":"日本語";localStorage.setItem("codeMirrorLocale",next);});
-(function(){const saved=localStorage.getItem("codeMirrorLocale");const ja=saved?saved==="ja":((navigator.language||"").toLowerCase().startsWith("ja")||Intl.DateTimeFormat().resolvedOptions().timeZone==="Asia/Tokyo");document.documentElement.lang=ja?"ja":"en";document.getElementById("langBtn").textContent=ja?"EN":"日本語";})();
+document.getElementById("languageSelect")?.addEventListener("change",()=>{applyLocale();if(!result.classList.contains("hidden"))compare();});
+document.getElementById("langBtn")?.addEventListener("click",()=>{const next=document.documentElement.lang==="ja"?"en":"ja";document.documentElement.lang=next;localStorage.setItem("codeMirrorLocale",next);applyLocale();});
+(function(){const saved=localStorage.getItem("codeMirrorLocale");const ja=saved?saved==="ja":((navigator.language||"").toLowerCase().startsWith("ja")||Intl.DateTimeFormat().resolvedOptions().timeZone==="Asia/Tokyo");document.documentElement.lang=ja?"ja":"en";applyLocale();})();
