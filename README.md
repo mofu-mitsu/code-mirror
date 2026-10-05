@@ -1,29 +1,65 @@
 # CODE MIRROR
 
-**Code Compare Lab** — compare code before/after a change and check the modified JavaScript for syntax errors.
+**コード比較ラボ** — 変更前と変更後のコードを比較して、「どこが変わったのか」「何行追加・削除されたのか」を確認するための小さな開発者向けツールです。
 
-## Features
+変更後のJavaScriptは、その場で構文チェックもできます。
 
-- Before / After two-pane editor
-- Line-based diff
-- Added / removed / changed statistics
-- JavaScript syntax check
-- Sample code loader
-- Local-only processing: code is never sent to a server
+## できること
 
-## Stack
+- 変更前 / 変更後の2ペインエディタ
+- 行単位の差分比較
+- 追加された行の表示
+- 削除された行の表示
+- 追加と削除がセットになった「変更ブロック」の集計
+- 変更後JavaScriptの構文チェック
+- 構文エラーの推定行・列の表示
+- サンプルコードの読み込み
+- ブラウザ内だけで処理（入力コードをサーバーへ送信しない）
+
+## 使い方
+
+1. 「変更前」に元のコードを貼り付ける
+2. 「変更後」に修正後のコードを貼り付ける
+3. **「比較する」**を押す
+4. 差分マップで追加・削除・変更箇所を確認する
+5. 構文チェックで変更後コードにJavaScriptの構文エラーがないか確認する
+
+「サンプル」を押すと、すぐに比較を試せます。
+
+## 差分の仕組み
+
+コードを行ごとに分割し、**LCS（最長共通部分列）**を使って変更前と変更後で共通している行を特定します。
+
+そのうえで、
+
+- `＋` = 追加
+- `−` = 削除
+- 空白 = 変更されていない行
+
+として差分を表示します。
+
+連続した追加・削除をひとまとまりの「変更ブロック」として扱うため、例えば1行を別の1行に置き換えた場合は、**追加1行・削除1行・変更1箇所**として確認できます。
+
+## 構文チェック
+
+変更後のJavaScriptを `new Function()` で構文解析します。
+
+コードそのものを実行するわけではないため、比較・構文チェックの処理はブラウザ内で完結します。
+
+## 技術構成
 
 - HTML
 - CSS
 - Vanilla JavaScript
-- No build step required
+- ビルド不要
 
-Open `index.html` directly or deploy the repository with GitHub Pages.
+GitHub Pagesなどにそのまま配置できます。
 
-## Roadmap
+## 今後の候補
 
-- [ ] Better changed-block detection
-- [ ] JSON / HTML / CSS / TypeScript checks
-- [ ] Highlight changed lines linked to syntax errors
-- [ ] Export diff
-- [ ] Dark mode
+- 変更行と構文エラー位置の直接リンク
+- JSON / HTML / CSS / TypeScriptのチェック
+- 文字単位のインライン差分
+- 差分のコピー / エクスポート
+- 差分ブロックごとの詳細表示
+- ダークモード
