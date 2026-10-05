@@ -11,11 +11,14 @@
 - 追加された行の表示
 - 削除された行の表示
 - 追加と削除がセットになった「変更ブロック」の集計
-- 変更後コードの構文チェック（JavaScript / TypeScript / Python / HTML / CSS）
+- 変更後コードの構文チェック（JavaScript / TypeScript / Python / HTML / CSS / PHP / Ruby / C / C++ / C# / Java / Go / Rust / JSON）
 - 構文エラーの推定行・列の表示
 - HTMLの開始タグ・閉じタグ対応チェック
 - 統合差分 / 左右比較の表示切り替え
 - 最初の差分位置への自動スクロール
+- 複数の差分を前後移動
+- 複数の構文エラーを前後移動
+- URLによるコード共有
 - サンプルコードの読み込み
 - ブラウザ内だけで処理（入力コードをサーバーへ送信しない）
 
@@ -74,13 +77,16 @@ GitHub Pagesなどにそのまま配置できます。
 
 ## 対応言語
 
-現在のエラーチェック対象は **JavaScript / TypeScript / Python / HTML / CSS** です。
+現在のエラーチェック対象は **JavaScript / TypeScript / Python / HTML / CSS / PHP / Ruby / C / C++ / C# / Java / Go / Rust / JSON** です。
 
 - JavaScript: Babel Parserによる構文解析＋補助チェック
 - TypeScript: Babel ParserのTypeScript / JSX構文解析
 - Python: Lezer Python parserによる構文解析＋フォールバック
 - HTML: タグ対応チェック＋DOMParserによる解析
 - CSS: CSSStyleSheetによる解析＋構造チェック
+- PHP / C++ / Java / Go / Rust / JSON: Lezer grammarによる構文解析
+- C: C++ grammarを使ったC系構造解析
+- Ruby / C#: 基本構造の補助チェック（専用パーサーではありません）
 
 差分比較そのものは、言語を問わずテキストとして利用できます。
 
@@ -101,3 +107,4 @@ GitHub Pagesなどにそのまま配置できます。
 ## エラー位置について
 
 構文エラーの行・列はパーサーが返す位置を優先します。パーサーが位置を返せない場合だけ補助的な構造チェックを使います。したがって「バグの実行時原因」を断定するものではなく、調査を始める位置を示すための情報です。
+\n## 共有\n\n「共有」ボタンは変更前・変更後コードと言語設定をURLのハッシュへエンコードし、共有URLを生成します。サーバーへコードを保存する方式ではありません。長大なコードではURLが非常に長くなるため、その場合はファイル共有などが適しています。\n
