@@ -25,7 +25,7 @@
     </a>
     <nav class="breadcrumb" aria-label="パンくず"><a href="https://mofu-mitsu.github.io/">HOME</a><span>/</span><span>CODE MIRROR</span></nav>
     <div class="header-actions">
-      <span class="status-dot"><i></i>ブラウザ内で処理</span>
+      <span class="status-dot"><i></i><span id="localStatus">ブラウザ内で処理</span></span>
       <button id="langBtn" class="ghost-btn lang-btn" type="button">EN</button>
       <button id="sampleBtn" class="ghost-btn" type="button">サンプル</button>
       <button id="clearBtn" class="ghost-btn" type="button">クリア</button>
@@ -64,17 +64,17 @@
     <section class="control-row">
       <button id="compareBtn" class="primary-btn" type="button"><span id="compareText">比較して原因候補を探す</span><b>→</b></button>
       <div class="mini-stats">
-        <div><small>変更前</small><strong id="beforeCount">0</strong><span>行</span></div>
-        <div><small>変更後</small><strong id="afterCount">0</strong><span>行</span></div>
+        <div><small id="beforeCountLabel">変更前</small><strong id="beforeCount">0</strong><span id="beforeUnit">行</span></div>
+        <div><small id="afterCountLabel">変更後</small><strong id="afterCount">0</strong><span id="afterUnit">行</span></div>
       </div>
     </section>
 
     <section id="result" class="result hidden">
-      <div class="section-label"><span>02</span> 変更マップ</div>
+      <div class="section-label"><span>02</span> <b id="mapLabel">変更マップ</b></div>
       <div class="stats-grid">
-        <article><span class="stat-icon add">＋</span><div><small>追加</small><strong id="addedStat">0</strong><span>行</span></div></article>
-        <article><span class="stat-icon del">−</span><div><small>削除</small><strong id="removedStat">0</strong><span>行</span></div></article>
-        <article><span class="stat-icon edit">↕</span><div><small>変更ブロック</small><strong id="changedStat">0</strong><span>箇所</span></div></article>
+        <article><span class="stat-icon add">＋</span><div><small id="addedLabel">追加</small><strong id="addedStat">0</strong><span>行</span></div></article>
+        <article><span class="stat-icon del">−</span><div><small id="removedLabel">削除</small><strong id="removedStat">0</strong><span>行</span></div></article>
+        <article><span class="stat-icon edit">↕</span><div><small id="changedLabel">変更ブロック</small><strong id="changedStat">0</strong><span>箇所</span></div></article>
       </div>
       <div class="diff-panel">
         <div class="panel-head"><strong>差分</strong><span id="diffSummary"></span></div>
@@ -83,7 +83,7 @@
     </section>
 
     <section id="syntaxSection" class="syntax hidden">
-      <div class="section-label"><span>03</span> <b>エラーチェック</b></div><div id="suspectsSection" class="suspects hidden"><div class="section-label"><span>04</span> <b>バグ原因候補</b></div><div id="suspectsCard" class="suspects-card"></div></div>
+      <div class="section-label"><span>03</span> <b id="checkLabel">エラーチェック</b></div><div id="suspectsSection" class="suspects hidden"><div class="section-label"><span>04</span> <b>バグ原因候補</b></div><div id="suspectsCard" class="suspects-card"></div></div>
       <div id="syntaxCard" class="syntax-card"></div>
     </section>
 
