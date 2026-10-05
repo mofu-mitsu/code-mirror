@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="CODE MIRROR — Before / After code comparison and JavaScript syntax checker.">
-  <title>CODE MIRROR — Code Compare Lab</title>
+  <meta name="description" content="CODE MIRROR — コードの変更点を比較し、変更後のJavaScriptを構文チェックするツール。">
+  <title>CODE MIRROR — コード比較ラボ</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -13,77 +13,77 @@
 <body>
   <div class="bg-grid" aria-hidden="true"></div>
   <header class="topbar">
-    <a class="brand" href="./" aria-label="CODE MIRROR home">
+    <a class="brand" href="./" aria-label="CODE MIRROR ホーム">
       <span class="brand-mark">{ }</span>
       <span>
         <strong>CODE MIRROR</strong>
-        <small>CODE COMPARE LAB</small>
+        <small>コード比較ラボ</small>
       </span>
     </a>
     <div class="header-actions">
-      <span class="status-dot"><i></i> LOCAL ONLY</span>
-      <button id="sampleBtn" class="ghost-btn" type="button">LOAD SAMPLE</button>
-      <button id="clearBtn" class="ghost-btn" type="button">CLEAR</button>
+      <span class="status-dot"><i></i>ブラウザ内で処理</span>
+      <button id="sampleBtn" class="ghost-btn" type="button">サンプル</button>
+      <button id="clearBtn" class="ghost-btn" type="button">クリア</button>
     </div>
   </header>
 
   <main class="shell">
     <section class="hero">
-      <div class="eyebrow"><span>01</span> DIFF LAB</div>
-      <h1>What changed?<br><em>Find the break.</em></h1>
-      <p>Compare code before and after a change, then check the new code for JavaScript syntax errors.</p>
+      <div class="eyebrow"><span>01</span> 差分解析</div>
+      <h1>何が変わった？<br><em>壊れた場所を探す。</em></h1>
+      <p>変更前と変更後のコードを並べて、追加・削除された行を比較。さらに変更後のJavaScriptに構文エラーがないかチェックします。</p>
     </section>
 
     <section class="editor-card">
       <div class="editor-head">
-        <div class="editor-title"><span class="step">A</span><div><strong>BEFORE</strong><small>original code</small></div></div>
-        <div class="editor-title"><span class="step after">B</span><div><strong>AFTER</strong><small>modified code</small></div></div>
+        <div class="editor-title"><span class="step">A</span><div><strong>変更前</strong><small>元のコード</small></div></div>
+        <div class="editor-title"><span class="step after">B</span><div><strong>変更後</strong><small>修正したコード</small></div></div>
       </div>
       <div class="editors">
         <div class="editor-wrap">
           <div class="line-numbers" id="beforeLines" aria-hidden="true">1</div>
-          <textarea id="beforeCode" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Before code"></textarea>
+          <textarea id="beforeCode" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="変更前のコード"></textarea>
         </div>
         <div class="editor-wrap">
           <div class="line-numbers" id="afterLines" aria-hidden="true">1</div>
-          <textarea id="afterCode" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="After code"></textarea>
+          <textarea id="afterCode" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="変更後のコード"></textarea>
         </div>
       </div>
       <div class="editor-foot">
-        <span><kbd>Tab</kbd> inserts spaces</span>
-        <span>JavaScript · text comparison</span>
+        <span><kbd>Tab</kbd> でインデント</span>
+        <span>JavaScript・行単位比較</span>
       </div>
     </section>
 
     <section class="control-row">
-      <button id="compareBtn" class="primary-btn" type="button"><span>COMPARE</span><b>→</b></button>
+      <button id="compareBtn" class="primary-btn" type="button"><span>比較する</span><b>→</b></button>
       <div class="mini-stats">
-        <div><small>BEFORE</small><strong id="beforeCount">0</strong><span>lines</span></div>
-        <div><small>AFTER</small><strong id="afterCount">0</strong><span>lines</span></div>
+        <div><small>変更前</small><strong id="beforeCount">0</strong><span>行</span></div>
+        <div><small>変更後</small><strong id="afterCount">0</strong><span>行</span></div>
       </div>
     </section>
 
     <section id="result" class="result hidden">
-      <div class="section-label"><span>02</span> CHANGE MAP</div>
+      <div class="section-label"><span>02</span> 変更マップ</div>
       <div class="stats-grid">
-        <article><span class="stat-icon add">＋</span><div><small>ADDED</small><strong id="addedStat">0</strong><span>lines</span></div></article>
-        <article><span class="stat-icon del">−</span><div><small>REMOVED</small><strong id="removedStat">0</strong><span>lines</span></div></article>
-        <article><span class="stat-icon edit">↕</span><div><small>CHANGED</small><strong id="changedStat">0</strong><span>blocks</span></div></article>
+        <article><span class="stat-icon add">＋</span><div><small>追加</small><strong id="addedStat">0</strong><span>行</span></div></article>
+        <article><span class="stat-icon del">−</span><div><small>削除</small><strong id="removedStat">0</strong><span>行</span></div></article>
+        <article><span class="stat-icon edit">↕</span><div><small>変更ブロック</small><strong id="changedStat">0</strong><span>箇所</span></div></article>
       </div>
       <div class="diff-panel">
-        <div class="panel-head"><strong>DIFF</strong><span id="diffSummary"></span></div>
+        <div class="panel-head"><strong>差分</strong><span id="diffSummary"></span></div>
         <div id="diffOutput" class="diff-output"></div>
       </div>
     </section>
 
     <section id="syntaxSection" class="syntax hidden">
-      <div class="section-label"><span>03</span> SYNTAX CHECK</div>
+      <div class="section-label"><span>03</span> 構文チェック</div>
       <div id="syntaxCard" class="syntax-card"></div>
     </section>
 
     <footer>
-      <span>CODE MIRROR / a tiny laboratory for broken code</span>
-      <span>Nothing leaves your browser.</span>
+      <span>CODE MIRROR / 壊れたコードを観測する小さな研究室</span>
+      <span>入力したコードはブラウザ内だけで処理されます。</span>
     </footer>
   </main>
   <script src="app.js"></script>
