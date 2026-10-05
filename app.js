@@ -255,11 +255,14 @@ function syntaxCheck(code) {
     return { ok: true, message: "構文エラーは見つかりませんでした。" };
   } catch (error) {
     const location = getSyntaxErrorLocation(error);
+    const structural = findStructuralError(code);
+    const fallback = structural ? indexToLocation(code, structural.index) : { line: null, column: null };
     return {
       ok: false,
       message: error.message || "JavaScriptの構文エラーです。",
-      line: location.line,
-      column: location.column
+      line: location.line || fallback.line,
+      column: location.column || fallback.column,
+      structuralMessage: structural ? structural.message : null
     };
   }
 }
