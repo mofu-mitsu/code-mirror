@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="CODE MIRROR — Before / After code comparison and JavaScript syntax checker.">
+  <title>CODE MIRROR — Code Compare Lab</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="bg-grid" aria-hidden="true"></div>
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="CODE MIRROR home">
+      <span class="brand-mark">{ }</span>
+      <span>
+        <strong>CODE MIRROR</strong>
+        <small>CODE COMPARE LAB</small>
+      </span>
+    </a>
+    <div class="header-actions">
+      <span class="status-dot"><i></i> LOCAL ONLY</span>
+      <button id="sampleBtn" class="ghost-btn" type="button">LOAD SAMPLE</button>
+      <button id="clearBtn" class="ghost-btn" type="button">CLEAR</button>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="hero">
+      <div class="eyebrow"><span>01</span> DIFF LAB</div>
+      <h1>What changed?<br><em>Find the break.</em></h1>
+      <p>Compare code before and after a change, then check the new code for JavaScript syntax errors.</p>
+    </section>
+
+    <section class="editor-card">
+      <div class="editor-head">
+        <div class="editor-title"><span class="step">A</span><div><strong>BEFORE</strong><small>original code</small></div></div>
+        <div class="editor-title"><span class="step after">B</span><div><strong>AFTER</strong><small>modified code</small></div></div>
+      </div>
+      <div class="editors">
+        <div class="editor-wrap">
+          <div class="line-numbers" id="beforeLines" aria-hidden="true">1</div>
+          <textarea id="beforeCode" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Before code"></textarea>
+        </div>
+        <div class="editor-wrap">
+          <div class="line-numbers" id="afterLines" aria-hidden="true">1</div>
+          <textarea id="afterCode" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="After code"></textarea>
+        </div>
+      </div>
+      <div class="editor-foot">
+        <span><kbd>Tab</kbd> inserts spaces</span>
+        <span>JavaScript · text comparison</span>
+      </div>
+    </section>
+
+    <section class="control-row">
+      <button id="compareBtn" class="primary-btn" type="button"><span>COMPARE</span><b>→</b></button>
+      <div class="mini-stats">
+        <div><small>BEFORE</small><strong id="beforeCount">0</strong><span>lines</span></div>
+        <div><small>AFTER</small><strong id="afterCount">0</strong><span>lines</span></div>
+      </div>
+    </section>
+
+    <section id="result" class="result hidden">
+      <div class="section-label"><span>02</span> CHANGE MAP</div>
+      <div class="stats-grid">
+        <article><span class="stat-icon add">＋</span><div><small>ADDED</small><strong id="addedStat">0</strong><span>lines</span></div></article>
+        <article><span class="stat-icon del">−</span><div><small>REMOVED</small><strong id="removedStat">0</strong><span>lines</span></div></article>
+        <article><span class="stat-icon edit">↕</span><div><small>CHANGED</small><strong id="changedStat">0</strong><span>blocks</span></div></article>
+      </div>
+      <div class="diff-panel">
+        <div class="panel-head"><strong>DIFF</strong><span id="diffSummary"></span></div>
+        <div id="diffOutput" class="diff-output"></div>
+      </div>
+    </section>
+
+    <section id="syntaxSection" class="syntax hidden">
+      <div class="section-label"><span>03</span> SYNTAX CHECK</div>
+      <div id="syntaxCard" class="syntax-card"></div>
+    </section>
+
+    <footer>
+      <span>CODE MIRROR / a tiny laboratory for broken code</span>
+      <span>Nothing leaves your browser.</span>
+    </footer>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
