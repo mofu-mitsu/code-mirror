@@ -129,7 +129,7 @@ let diffViewMode="unified";
 function buildSideRows(rows){const result=[];for(let i=0;i<rows.length;i++){const row=rows[i];if(row.type==="del"&&rows[i+1]?.type==="add"){result.push({left:row,right:rows[i+1],type:"change"});i++;}else if(row.type==="add"&&rows[i+1]?.type==="del"){result.push({left:rows[i+1],right:row,type:"change"});i++;}else if(row.type==="del")result.push({left:row,right:null,type:"del"});else if(row.type==="add")result.push({left:null,right:row,type:"add"});else result.push({left:row,right:row,type:"ctx"});}return result;}
 function charDiffPair(a,b){
   if(a===b)return{left:escapeHtml(a),right:escapeHtml(b)};
-  if(a.length>700||b.length>700)return{left:'<mark class="inline-del">'+escapeHtml(a)+'</mark>',right:'<mark class="inline-add">'+escapeHtml(b)+'</mark>'};
+  if(a.length>700||b.length>700)return{left:'<span class="inline-del">'+escapeHtml(a)+'</span>',right:'<span class="inline-add">'+escapeHtml(b)+'</span>'};
   const n=a.length,m=b.length,dp=Array.from({length:n+1},()=>new Uint16Array(m+1));
   for(let i=n-1;i>=0;i--)for(let j=m-1;j>=0;j--)dp[i][j]=a[i]===b[j]?dp[i+1][j+1]+1:Math.max(dp[i+1][j],dp[i][j+1]);
   const L=[],R=[];let i=0,j=0;
@@ -141,7 +141,7 @@ function charDiffPair(a,b){
   }
   while(i<n)push(L,"inline-del",a[i++]);
   while(j<m)push(R,"inline-add",b[j++]);
-  const render=arr=>arr.map(x=>x.cls?'<mark class="'+x.cls+'">'+escapeHtml(x.text)+'</mark>':escapeHtml(x.text)).join("");
+  const render=arr=>arr.map(x=>x.cls?'<mark class="'+x.cls+'">'+escapeHtml(x.text)+'</span>':escapeHtml(x.text)).join("");
   return{left:render(L),right:render(R)};
 }
 function renderUnifiedDiff(rows){
@@ -155,7 +155,7 @@ function renderUnifiedDiff(rows){
       i++;index++;continue;
     }
     const number=row.type==="add"?row.right:row.left,mark=row.type==="add"?"+":row.type==="del"?"−":" ";
-    const code=row.type==="ctx"?escapeHtml(row.text):"<mark class=\""+(row.type==="add"?"inline-add":"inline-del")+"\">"+escapeHtml(row.text)+"</mark>";
+    const code=row.type==="ctx"?escapeHtml(row.text):"<mark class=\""+(row.type==="add"?"inline-add":"inline-del")+"\">"+escapeHtml(row.text)+"</span>";
     html+="<div class=\"diff-line "+row.type+"\" data-diff-index=\""+index+"\"><span class=\"ln\">"+(number||"")+"</span><span class=\"code\"><span class=\"mark\">"+mark+"</span>"+code+"</span></div>";
     if(row.type!=="ctx")index++;
   }
@@ -173,7 +173,7 @@ function renderSideBySideDiff(rows){
     }
     if(row.type==="add"||row.type==="del"){
       const cls=row.type==="add"?"add":"del";
-      html+="<div class=\"side-row "+cls+"\" data-diff-index=\""+index+"\"><div class=\"side-cell "+cls+"\"><span class=\"side-ln\">"+(row.left||row.right||"")+"</span><code>"+(row.type==="add"?'<mark class=\"inline-add\">'+escapeHtml(row.text)+"</mark>":'<mark class=\"inline-del\">'+escapeHtml(row.text)+"</mark>")+"</code></div><div class=\"side-cell\"><span class=\"side-ln\"></span><code></code></div></div>";
+      html+="<div class=\"side-row "+cls+"\" data-diff-index=\""+index+"\"><div class=\"side-cell "+cls+"\"><span class=\"side-ln\">"+(row.left||row.right||"")+"</span><code>"+(row.type==="add"?'<mark class=\"inline-add\">'+escapeHtml(row.text)+"</span>":'<mark class=\"inline-del\">'+escapeHtml(row.text)+"</span>")+"</code></div><div class=\"side-cell\"><span class=\"side-ln\"></span><code></code></div></div>";
       index++;continue;
     }
     html+="<div class=\"side-row ctx\"><div class=\"side-cell ctx\"><span class=\"side-ln\">"+row.left+"</span><code>"+escapeHtml(row.text)+"</code></div><div class=\"side-cell ctx\"><span class=\"side-ln\">"+row.right+"</span><code>"+escapeHtml(row.text)+"</code></div></div>";
