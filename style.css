@@ -60,3 +60,7 @@ footer{display:flex;justify-content:space-between;margin-top:90px;padding-top:18
 .inline-add,.inline-del{padding:1px 2px;border-radius:3px;font:inherit}.diff-line.add .inline-add{background:#bfeedd;color:#075f48}.diff-line.del .inline-del{background:#ffd0d7;color:#923442}.diff-line.add> .code>.inline-add,.diff-line.del> .code>.inline-del{background:transparent}
 .syntax{margin-top:55px}.suspects{margin-top:55px}.syntax-card{scroll-margin-top:90px}.suspects-card{scroll-margin-top:90px}
 .error-item,.suspect-item{transition:border-color .16s,background .16s,transform .16s}.error-item:hover,.suspect-item:hover{border-color:#cfc8ff;background:#faf9ff;transform:translateX(2px)}
+
+.diff-line.is-active-diff,.side-row.is-active-diff{outline:2px solid #8b7cf6;outline-offset:-2px;box-shadow:inset 4px 0 0 #8b7cf6;position:relative;z-index:1}
+.side-row.is-active-diff .side-cell{background:#f7f5ff}
+.error-item.is-active-error{outline:2px solid #8b7cf6;outline-offset:-2px;background:#f7f5ff}
