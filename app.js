@@ -124,103 +124,57 @@ function groupChanges(rows) {
   return groups;
 }
 
-function renderDiff() {
-  const rows = diffLines(beforeEl.value, afterEl.value);
-  const groups = groupChanges(rows);
-  const added = rows.filter(row => row.type === "add").length;
-  const removed = rows.filter(row => row.type === "del").length;
-  const changed = groups.filter(group => group.hasAdd && group.hasDel).length;
 
-  document.getElementById("addedStat").textContent = added;
-  document.getElementById("removedStat").textContent = removed;
-  document.getElementById("changedStat").textContent = changed;
-
-  const summary = added === 0 && removed === 0
-    ? "変更なし"
-    : `追加 ${added}行 · 削除 ${removed}行 · 変更 ${changed}箇所`;
-  document.getElementById("diffSummary").textContent = summary;
-
-  const output = document.getElementById("diffOutput");
-
-  if (!rows.some(row => row.type !== "ctx")) {
-    output.innerHTML = '<div class="no-diff">変更はありません。</div>';
-    return;
-  }
-
-  output.innerHTML = rows.map(row => {
-    const number = row.type === "add" ? row.right : row.left;
-    const mark = row.type === "add" ? "+" : row.type === "del" ? "−" : " ";
-    return `
-      <div class="diff-line ${row.type}">
-        <span class="ln">${number || ""}</span>
-        <span class="code"><span class="mark">${mark}</span>${escapeHtml(row.text)}</span>
-      </div>`;
-  }).join("");
-}
-
+let diffViewMode="unified";
+function buildSideRows(rows){const result=[];for(let i=0;i<rows.length;i++){const row=rows[i];if(row.type==="del"&&rows[i+1]?.type==="add"){result.push({left:row,right:rows[i+1],type:"change"});i++;}else if(row.type==="add"&&rows[i+1]?.type==="del"){result.push({left:rows[i+1],right:row,type:"change"});i++;}else if(row.type==="del")result.push({left:row,right:null,type:"del"});else if(row.type==="add")result.push({left:null,right:row,type:"add"});else result.push({left:row,right:row,type:"ctx"});}return result;}
+function renderUnifiedDiff(rows){return rows.map(row=>{const number=row.type==="add"?row.right:row.left,mark=row.type==="add"?"+":row.type==="del"?"−":" ";return"<div class=\"diff-line "+row.type+"\"><span class=\"ln\">"+(number||"")+"</span><span class=\"code\"><span class=\"mark\">"+mark+"</span>"+escapeHtml(row.text)+"</span></div>";}).join("");}
+function renderSideBySideDiff(rows){return buildSideRows(rows).map(pair=>{const left=pair.left,right=pair.right;return"<div class=\"side-row "+pair.type+"\"><div class=\"side-cell "+(left?.type||"")+"\"><span class=\"side-ln\">"+(left?.left||"")+"</span><code>"+(left?escapeHtml(left.text):"")+"</code></div><div class=\"side-cell "+(right?.type||"")+"\"><span class=\"side-ln\">"+(right?.right||"")+"</span><code>"+(right?escapeHtml(right.text):"")+"</code></div></div>";}).join("");}
+function renderDiff(){const rows=diffLines(beforeEl.value,afterEl.value),groups=groupChanges(rows),added=rows.filter(row=>row.type==="add").length,removed=rows.filter(row=>row.type==="del").length,changed=groups.filter(group=>group.hasAdd&&group.hasDel).length;document.getElementById("addedStat").textContent=added;document.getElementById("removedStat").textContent=removed;document.getElementById("changedStat").textContent=changed;document.getElementById("diffSummary").textContent=added===0&&removed===0?"変更なし":"追加 "+added+"行 · 削除 "+removed+"行 · 変更 "+changed+"箇所";const output=document.getElementById("diffOutput");if(!rows.some(row=>row.type!=="ctx")){output.innerHTML="<div class=\"no-diff\">変更はありません。</div>";return;}output.classList.toggle("side-by-side",diffViewMode==="side");output.innerHTML=diffViewMode==="side"?renderSideBySideDiff(rows):renderUnifiedDiff(rows);}
 function findStructuralError(code) {
-  const stack=[];
+  const stack=[]; let quote=null,escaped=false,lineComment=false,blockComment=false;
   for(let i=0;i<code.length;i++){
-    const ch=code[i];
-    if("({[".includes(ch)) stack.push({ch,index:i});
-    if(")}]".includes(ch)){
-      const expected={")":"(","}":"{","]":"["}[ch];
-      const top=stack[stack.length-1];
-      if(!top||top.ch!==expected) return {index:i,message:"Unexpected "+ch};
-      stack.pop();
-    }
+    const ch=code[i],next=code[i+1];
+    if(lineComment){if(ch==="\n")lineComment=false;continue;}
+    if(blockComment){if(ch==="*"&&next==="/"){blockComment=false;i++;}continue;}
+    if(quote){if(escaped)escaped=false;else if(ch==="\\")escaped=true;else if(ch===quote)quote=null;continue;}
+    if(ch==="/"&&next==="/"){lineComment=true;i++;continue;}
+    if(ch==="/"&&next==="*"){blockComment=true;i++;continue;}
+    if(ch==="\""||ch==="'"||ch===String.fromCharCode(96)){quote=ch;continue;}
+    if("({[".includes(ch)){stack.push({ch,index:i});continue;}
+    if(")}]".includes(ch)){const expected={")":"(","}":"{","]":"["}[ch],top=stack[stack.length-1];if(!top||top.ch!==expected)return{index:i,message:"Unexpected "+ch};stack.pop();}
   }
-  if(stack.length) return {index:Math.max(0,code.length-1),message:"Unclosed "+stack[stack.length-1].ch};
+  if(quote)return{index:Math.max(0,code.length-1),message:"Unclosed string"};
+  if(blockComment)return{index:Math.max(0,code.length-1),message:"Unclosed block comment"};
+  if(stack.length)return{index:Math.max(0,code.length-1),message:"Unclosed "+stack[stack.length-1].ch};
   return null;
 }
-function indexToLocation(code,index){
-  const lines=code.slice(0,index).split("\n");
-  const last=lines[lines.length-1];
-  return {line:lines.length,column:last.length+1};
+function indexToLocation(code,index){const lines=code.slice(0,Math.max(0,index)).split("\n"),last=lines[lines.length-1];return{line:lines.length,column:last.length+1};}
+function locationFromIndex(code,index){if(typeof index!=="number"||index<0)return{line:null,column:null};return indexToLocation(code,index);}
+let babelParserPromise=null;
+async function loadBabelParser(){if(!babelParserPromise)babelParserPromise=import("https://esm.sh/@babel/parser@7.28.4?bundle");const mod=await babelParserPromise;return mod.parse||mod.default?.parse;}
+let pythonParserPromise=null;
+async function loadPythonParser(){if(!pythonParserPromise)pythonParserPromise=import("https://esm.sh/@lezer/python@1.1.19?bundle");const mod=await pythonParserPromise;return mod.parser||mod.default?.parser;}
+function diagnosticLocation(error,code){if(error?.loc?.line)return{line:Number(error.loc.line),column:Number(error.loc.column)+1};if(error?.pos?.start!=null)return locationFromIndex(code,error.pos.start);return getSyntaxErrorLocation(error);}
+async function checkJavaScript(code,language="javascript"){
+  if(!code.trim())return{ok:true,message:"チェックするコードがありません。"};
+  try{const parse=await loadBabelParser(),plugins=language==="typescript"?["typescript","jsx"]:["jsx"];parse(code,{sourceType:"unambiguous",plugins,errorRecovery:false,sourceFilename:language==="typescript"?"input.tsx":"input.js"});return{ok:true,message:language==="typescript"?"TypeScriptの構文エラーは見つかりませんでした。":"JavaScriptの構文エラーは見つかりませんでした。"};}
+  catch(error){const location=diagnosticLocation(error,code),structural=findStructuralError(code),fallback=structural?indexToLocation(code,structural.index):{line:null,column:null};return{ok:false,message:error.message||(language==="typescript"?"TypeScriptの構文エラーです。":"JavaScriptの構文エラーです。"),line:location.line||fallback.line,column:location.column||fallback.column,structuralMessage:structural?structural.message:null};}
 }
-function checkHTML(code){
-  if(!code.trim()) return {ok:true,message:"チェックするコードがありません。"};
-  const doc=new DOMParser().parseFromString(code,"text/html");
-  const err=doc.querySelector("parsererror");
-  return err?{ok:false,message:err.textContent.trim(),line:null,column:null}:{ok:true,message:"HTMLの構文エラーは見つかりませんでした。"};
+function checkHTMLTags(code){
+  const stack=[],voidTags=new Set(["area","base","br","col","embed","hr","img","input","link","meta","param","source","track","wbr"]),commentOpen=code.indexOf("<!--");
+  if(commentOpen>=0&&code.indexOf("-->",commentOpen+4)<0){const p=indexToLocation(code,commentOpen);return{ok:false,message:"閉じられていないHTMLコメントです。",line:p.line,column:p.column};}
+  const tagPattern=/<!--[\s\S]*?-->|<![^>]*>|<\s*(\/?)\s*([A-Za-z][A-Za-z0-9:-]*)([^>]*)>/g;let match;
+  while((match=tagPattern.exec(code))){const full=match[0];if(full.startsWith("<!--")||full.startsWith("<!"))continue;const closing=Boolean(match[1]),name=match[2].toLowerCase(),attrs=match[3]||"",selfClosing=/\/\s*$/.test(attrs)||voidTags.has(name);
+    if(closing){const top=stack[stack.length-1];if(!top||top.name!==name){const p=indexToLocation(code,match.index);return{ok:false,message:top?"閉じタグ </"+name+"> が <"+top.name+"> と対応していません。":"閉じタグ </"+name+"> に対応する開始タグがありません。",line:p.line,column:p.column};}stack.pop();}
+    else if(!selfClosing&&!voidTags.has(name))stack.push({name,index:match.index});
+  }
+  const unclosed=stack[stack.length-1];if(unclosed){const p=indexToLocation(code,unclosed.index);return{ok:false,message:"開始タグ <"+unclosed.name+"> が閉じられていません。",line:p.line,column:p.column};}return null;
 }
-function checkCSS(code){
-  if(!code.trim()) return {ok:true,message:"チェックするコードがありません。"};
-  const structural=findStructuralError(code);
-  if(structural){const p=indexToLocation(code,structural.index);return {ok:false,message:structural.message,line:p.line,column:p.column};}
-  try{const sheet=new CSSStyleSheet();sheet.replaceSync(code);return {ok:true,message:"CSSの構文エラーは見つかりませんでした。"};}
-  catch(e){return {ok:false,message:e.message||"CSS構文エラーです。",line:null,column:null};}
-}
-function currentCheck(code){
-  const lang=document.getElementById("languageSelect")?.value||"javascript";
-  if(lang==="html") return checkHTML(code);
-  if(lang==="css") return checkCSS(code);
-  return syntaxCheck(code);
-}
-function renderSuspects(rows,groups,check){
-  const section=document.getElementById("suspectsSection"),card=document.getElementById("suspectsCard");
-  if(!section||!card) return;
-  const added=rows.filter(r=>r.type==="add");
-  const candidates=added.map(row=>{const distance=check.line?Math.abs(row.right-check.line):99;let score=/[{}()[\]=;]|=>|function|const|let|var|return/.test(row.text)?2:0;if(check.line&&distance===0)score+=10;else if(check.line&&distance<=2)score+=5;return {row,distance,score};}).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,3);
-  if(!check.ok&&candidates.length){
-    section.classList.remove("hidden");
-    card.innerHTML=candidates.map((c,i)=>"<article class=\"suspect-item\"><span class=\"rank\">0"+(i+1)+"</span><div><strong>"+(c.distance===0?c.row.right+"行目の追加変更がエラー位置と一致しています。":"変更ブロック候補 #"+Math.min(groups.length,i+1))+"</strong><code>+ "+escapeHtml(c.row.text)+"</code></div></article>").join("")+"<p class=\"heuristic-note\">差分とエラー位置からの推定です。実行時バグを断定するものではありません。</p>";
-  }else section.classList.add("hidden");
-}
-const UI_TEXT={
-ja:{brand:"コード比較ラボ",status:"ブラウザ内で処理",sample:"サンプル",clear:"クリア",eyebrow:"差分解析",title:"何が変わった？<br><em>壊れた場所を探す。</em>",hero:"変更前と変更後のコードを並べて、追加・削除された行を比較。さらに変更後のコードに構文エラーがないかチェックします。",target:"チェック対象",note:"差分比較はすべてのテキストで利用できます。",before:"変更前",beforeSub:"元のコード",after:"変更後",afterSub:"修正したコード",tab:"でインデント",mode:"行単位比較",compare:"比較して原因候補を探す",map:"変更マップ",add:"追加",remove:"削除",changed:"変更ブロック",check:"エラーチェック",suspect:"バグ原因候補",footer:"CODE MIRROR / 壊れたコードを観測する小さな研究室",local:"入力したコードはブラウザ内だけで処理されます。"},
-en:{brand:"CODE COMPARE LAB",status:"Runs in browser",sample:"SAMPLE",clear:"CLEAR",eyebrow:"DIFF ANALYSIS",title:"What changed?<br><em>Find where it broke.</em>",hero:"Compare before and after code, inspect added and removed lines, then check the edited code for syntax errors.",target:"CHECK LANGUAGE",note:"Diff comparison works with any text.",before:"BEFORE",beforeSub:"Original code",after:"AFTER",afterSub:"Edited code",tab:"for indentation",mode:"Line-based diff",compare:"COMPARE & FIND SUSPECTS",map:"CHANGE MAP",add:"ADDED",remove:"REMOVED",changed:"CHANGED BLOCKS",check:"ERROR CHECK",suspect:"LIKELY BUG SUSPECTS",footer:"CODE MIRROR / A small lab for observing broken code",local:"Your code is processed locally in this browser."}
-};
-function applyLocale(){
-  const x=UI_TEXT[document.documentElement.lang==="en"?"en":"ja"];
-  const map={brandSub:x.brand,localStatus:x.status,sampleBtn:x.sample,clearBtn:x.clear,eyebrowText:x.eyebrow,heroTitle:x.title,heroText:x.hero,languageLabel:x.target,languageNote:x.note,beforeLabel:x.before,beforeSub:x.beforeSub,afterLabel:x.after,afterSub:x.afterSub,tabHint:x.tab,compareText:x.compare,mapLabel:x.map,addedLabel:x.add,removedLabel:x.remove,changedLabel:x.changed,checkLabel:x.check,suspectLabel:x.suspect,footerTitle:x.footer,footerLocal:x.local};
-  Object.keys(map).forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=map[id];});
-  const lang=document.getElementById("languageSelect")?.value||"javascript";
-  const name=lang==="html"?"HTML":lang==="css"?"CSS":"JavaScript";
-  const mode=document.getElementById("compareMode");if(mode)mode.textContent=name+" · "+x.mode;
-  document.getElementById("langBtn").textContent=document.documentElement.lang==="ja"?"EN":"日本語";
-  document.title=document.documentElement.lang==="ja"?"CODE MIRROR — コード比較ラボ":"CODE MIRROR — Code Compare Lab";
-}
+function checkHTML(code){if(!code.trim())return{ok:true,message:"チェックするコードがありません。"};const tagError=checkHTMLTags(code);if(tagError)return tagError;const doc=new DOMParser().parseFromString(code,"text/html"),parserError=doc.querySelector("parsererror");return parserError?{ok:false,message:parserError.textContent.trim(),line:null,column:null}:{ok:true,message:"HTMLのタグ対応・基本構文に問題は見つかりませんでした。"};}
+function checkCSS(code){if(!code.trim())return{ok:true,message:"チェックするコードがありません。"};try{const sheet=new CSSStyleSheet();sheet.replaceSync(code);return{ok:true,message:"CSSの構文エラーは見つかりませんでした。"};}catch(error){const structural=findStructuralError(code),location=structural?indexToLocation(code,structural.index):getSyntaxErrorLocation(error);return{ok:false,message:error.message||"CSS構文エラーです。",line:location.line,column:location.column};}}
+function checkPythonFallback(code){const lines=splitLines(code);let triple=null;for(let i=0;i<lines.length;i++){const raw=lines[i],trimmed=raw.trim();if(!trimmed||trimmed.startsWith("#"))continue;const leading=raw.match(/^[ \t]*/)?.[0]||"";if(leading.includes("\t")&&leading.includes(" "))return{ok:false,message:"タブとスペースが混在したインデントです。",line:i+1,column:1};if(/^(if|elif|else|for|while|try|except|finally|with|def|class)\b/.test(trimmed)&&!trimmed.endsWith(":"))return{ok:false,message:"ブロック文の末尾に ':' がありません。",line:i+1,column:raw.length};const structural=findStructuralError(raw);if(structural){const p=indexToLocation(raw,structural.index);return{ok:false,message:structural.message,line:i+1,column:p.column};}if((raw.match(/'''/g)||[]).length%2||(raw.match(/"""/g)||[]).length%2)triple=triple?null:"triple";}if(triple)return{ok:false,message:"閉じられていない三重引用符があります。",line:lines.length,column:lines[lines.length-1].length+1};return{ok:true,message:"Pythonの基本構文に問題は見つかりませんでした。",heuristic:true};}
+async function checkPython(code){if(!code.trim())return{ok:true,message:"チェックするコードがありません。"};try{const parser=await loadPythonParser(),tree=parser.parse(code);let errorNode=null;tree.iterate({enter(node){if(!errorNode&&node.type?.isError)errorNode={from:node.from};}});if(errorNode){const p=locationFromIndex(code,errorNode.from);return{ok:false,message:"Pythonの構文エラーを検出しました。",line:p.line,column:p.column};}return{ok:true,message:"Pythonの構文エラーは見つかりませんでした。"};}catch(error){return checkPythonFallback(code);}}
+async function currentCheck(code){const lang=document.getElementById("languageSelect")?.value||"javascript";if(lang==="html")return checkHTML(code);if(lang==="css")return checkCSS(code);if(lang==="python")return checkPython(code);return checkJavaScript(code,lang);}
 
 function getSyntaxErrorLocation(error) {
   const message = String(error?.message || "");
@@ -244,70 +198,10 @@ function getSyntaxErrorLocation(error) {
   return { line: null, column: null };
 }
 
-function syntaxCheck(code) {
-  if (!code.trim()) {
-    return { ok: true, message: "チェックするコードがありません。" };
-  }
 
-  try {
-    // new Functionはコードを実行せず、JavaScriptとして構文解析だけを行う。
-    new Function(code);
-    return { ok: true, message: "構文エラーは見つかりませんでした。" };
-  } catch (error) {
-    const location = getSyntaxErrorLocation(error);
-    const structural = findStructuralError(code);
-    const fallback = structural ? indexToLocation(code, structural.index) : { line: null, column: null };
-    return {
-      ok: false,
-      message: error.message || "JavaScriptの構文エラーです。",
-      line: location.line || fallback.line,
-      column: location.column || fallback.column,
-      structuralMessage: structural ? structural.message : null
-    };
-  }
-}
-
-function renderSyntax() {
-  const check = currentCheck(afterEl.value);
-  const card = document.getElementById("syntaxCard");
-
-  if (check.ok) {
-    card.innerHTML = `
-      <div class="syntax-ok">
-        <span class="syntax-icon">✓</span>
-        <div>
-          <strong>構文は問題なさそうです。</strong>
-          <small>${escapeHtml(check.message)}</small>
-        </div>
-      </div>`;
-    return;
-  }
-
-  const locationText = check.line
-    ? `変更後コードの ${check.line}行目付近${check.column ? `（${check.column}列目）` : ""}`
-    : "エラー位置を特定できませんでした。";
-
-  card.innerHTML = `
-    <div class="syntax-error">
-      <span class="syntax-icon">!</span>
-      <div>
-        <strong>構文エラーを検出しました。</strong>
-        <small>${escapeHtml(check.message)}</small>
-      </div>
-    </div>
-    <ul class="error-list">
-      <li>推定位置：${escapeHtml(locationText)}</li>
-    </ul>`;
-}
-
-function compare() {
-  result.classList.remove("hidden");
-  syntaxSection.classList.remove("hidden");
-  renderDiff();
-  renderSyntax();
-  const suspectRows=diffLines(beforeEl.value,afterEl.value);
-  renderSuspects(suspectRows,groupChanges(suspectRows),currentCheck(afterEl.value));
-}
+async function renderSyntax(){const check=await currentCheck(afterEl.value),card=document.getElementById("syntaxCard");if(check.ok){card.innerHTML="<div class=\"syntax-ok\"><span class=\"syntax-icon\">✓</span><div><strong>構文は問題なさそうです。</strong><small>"+escapeHtml(check.message)+"</small></div></div>";return check;}const locationText=check.line?"変更後コードの "+check.line+"行目付近"+(check.column?"（"+check.column+"列目）":""):"エラー位置を特定できませんでした。";card.innerHTML="<div class=\"syntax-error\"><span class=\"syntax-icon\">!</span><div><strong>構文エラーを検出しました。</strong><small>"+escapeHtml(check.message)+"</small></div></div><ul class=\"error-list\"><li>推定位置："+escapeHtml(locationText)+"</li></ul>";return check;}
+function scrollToFirstDiff(rows){const first=rows.find(row=>row.type!=="ctx");if(!first)return;const scrollEditor=(textarea,line)=>{if(!line)return;const lineHeight=parseFloat(getComputedStyle(textarea).lineHeight)||19.8;textarea.scrollTop=Math.max(0,(line-1)*lineHeight);};scrollEditor(beforeEl,first.left);scrollEditor(afterEl,first.right);const output=document.getElementById("diffOutput"),changedEl=output?.querySelector(".diff-line.add,.diff-line.del,.side-row.add,.side-row.del,.side-row.change");if(changedEl)changedEl.scrollIntoView({behavior:"smooth",block:"center"});}
+async function compare(){result.classList.remove("hidden");syntaxSection.classList.remove("hidden");renderDiff();const check=await renderSyntax();const suspectRows=diffLines(beforeEl.value,afterEl.value);renderSuspects(suspectRows,groupChanges(suspectRows),check);scrollToFirstDiff(suspectRows);}
 
 [beforeEl, afterEl].forEach(textarea => {
   textarea.addEventListener("input", updateCounts);
@@ -330,16 +224,20 @@ function compare() {
   });
 });
 
-document.getElementById("compareBtn").addEventListener("click", () => {
-  compare();
+document.getElementById("compareBtn").addEventListener("click", async () => {
+  await compare();
   result.scrollIntoView({ behavior: "smooth", block: "start" });
 });
 
-document.getElementById("sampleBtn").addEventListener("click", () => {
+
+document.getElementById("unifiedViewBtn")?.addEventListener("click",()=>{diffViewMode="unified";document.getElementById("unifiedViewBtn").classList.add("active");document.getElementById("sideViewBtn").classList.remove("active");renderDiff();scrollToFirstDiff(diffLines(beforeEl.value,afterEl.value));});
+document.getElementById("sideViewBtn")?.addEventListener("click",()=>{diffViewMode="side";document.getElementById("sideViewBtn").classList.add("active");document.getElementById("unifiedViewBtn").classList.remove("active");renderDiff();scrollToFirstDiff(diffLines(beforeEl.value,afterEl.value));});
+
+document.getElementById("sampleBtn").addEventListener("click", async () => {
   beforeEl.value = sampleBefore;
   afterEl.value = sampleAfter;
   updateCounts();
-  compare();
+  await compare();
 });
 
 document.getElementById("clearBtn").addEventListener("click", () => {
@@ -354,6 +252,6 @@ document.getElementById("clearBtn").addEventListener("click", () => {
 updateCounts();
 
 
-document.getElementById("languageSelect")?.addEventListener("change",()=>{applyLocale();if(!result.classList.contains("hidden"))compare();});
+document.getElementById("languageSelect")?.addEventListener("change",async()=>{applyLocale();if(!result.classList.contains("hidden"))await compare();});
 document.getElementById("langBtn")?.addEventListener("click",()=>{const next=document.documentElement.lang==="ja"?"en":"ja";document.documentElement.lang=next;localStorage.setItem("codeMirrorLocale",next);applyLocale();});
 (function(){const saved=localStorage.getItem("codeMirrorLocale");const ja=saved?saved==="ja":((navigator.language||"").toLowerCase().startsWith("ja")||Intl.DateTimeFormat().resolvedOptions().timeZone==="Asia/Tokyo");document.documentElement.lang=ja?"ja":"en";applyLocale();})();
