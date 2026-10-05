@@ -129,7 +129,7 @@ let diffViewMode="unified";
 function buildSideRows(rows){const result=[];for(let i=0;i<rows.length;i++){const row=rows[i];if(row.type==="del"&&rows[i+1]?.type==="add"){result.push({left:row,right:rows[i+1],type:"change"});i++;}else if(row.type==="add"&&rows[i+1]?.type==="del"){result.push({left:rows[i+1],right:row,type:"change"});i++;}else if(row.type==="del")result.push({left:row,right:null,type:"del"});else if(row.type==="add")result.push({left:null,right:row,type:"add"});else result.push({left:row,right:row,type:"ctx"});}return result;}
 function renderUnifiedDiff(rows){return rows.map(row=>{const number=row.type==="add"?row.right:row.left,mark=row.type==="add"?"+":row.type==="del"?"−":" ";return"<div class=\"diff-line "+row.type+"\"><span class=\"ln\">"+(number||"")+"</span><span class=\"code\"><span class=\"mark\">"+mark+"</span>"+escapeHtml(row.text)+"</span></div>";}).join("");}
 function renderSideBySideDiff(rows){return buildSideRows(rows).map(pair=>{const left=pair.left,right=pair.right;return"<div class=\"side-row "+pair.type+"\"><div class=\"side-cell "+(left?.type||"")+"\"><span class=\"side-ln\">"+(left?.left||"")+"</span><code>"+(left?escapeHtml(left.text):"")+"</code></div><div class=\"side-cell "+(right?.type||"")+"\"><span class=\"side-ln\">"+(right?.right||"")+"</span><code>"+(right?escapeHtml(right.text):"")+"</code></div></div>";}).join("");}
-function renderDiff(){const rows=diffLines(beforeEl.value,afterEl.value),groups=groupChanges(rows),added=rows.filter(row=>row.type==="add").length,removed=rows.filter(row=>row.type==="del").length,changed=groups.filter(group=>group.hasAdd&&group.hasDel).length;document.getElementById("addedStat").textContent=added;document.getElementById("removedStat").textContent=removed;document.getElementById("changedStat").textContent=changed;document.getElementById("diffSummary").textContent=added===0&&removed===0?"変更なし":"追加 "+added+"行 · 削除 "+removed+"行 · 変更 "+changed+"箇所";const output=document.getElementById("diffOutput");if(!rows.some(row=>row.type!=="ctx")){output.innerHTML="<div class=\"no-diff\">変更はありません。</div>";return;}output.classList.toggle("side-by-side",diffViewMode==="side");output.innerHTML=diffViewMode==="side"?renderSideBySideDiff(rows):renderUnifiedDiff(rows);}
+function renderDiff(){const rows=diffLines(beforeEl.value,afterEl.value),groups=groupChanges(rows),added=rows.filter(row=>row.type==="add").length,removed=rows.filter(row=>row.type==="del").length,changed=groups.filter(group=>group.hasAdd&&group.hasDel).length;document.getElementById("addedStat").textContent=added;document.getElementById("removedStat").textContent=removed;document.getElementById("changedStat").textContent=changed;document.getElementById("diffSummary").textContent=uiLang==="en"?(added===0&&removed===0?"No changes":"Added "+added+" · Removed "+removed+" · Changed "+changed):(added===0&&removed===0?"変更なし":"追加 "+added+"行 · 削除 "+removed+"行 · 変更 "+changed+"箇所");const output=document.getElementById("diffOutput");if(!rows.some(row=>row.type!=="ctx")){output.innerHTML="<div class=\"no-diff\">"+(uiLang==="en"?"No changes.":"変更はありません。")+"</div>";return;}output.classList.toggle("side-by-side",diffViewMode==="side");output.innerHTML=diffViewMode==="side"?renderSideBySideDiff(rows):renderUnifiedDiff(rows);}
 
 function findStructuralError(code) {
   const stack=[]; let quote=null,escaped=false,lineComment=false,blockComment=false;
@@ -280,22 +280,24 @@ function renderSuspects(rows,groups,check){
   groups.forEach((group,i)=>{const row=group.rows.find(r=>r.type==="add")||group.rows[0];candidates.push({line:row.right||row.left,text:row.text,score:100-i});});
   if(check?.line)candidates.sort((a,b)=>Math.abs(a.line-check.line)-Math.abs(b.line-check.line));
   if(!candidates.length){section.classList.add("hidden");return;}
+  const en=document.documentElement.lang==="en";
   section.classList.remove("hidden");
-  card.innerHTML=candidates.slice(0,8).map((c,i)=>"<button class=\"suspect-item\" type=\"button\" data-line=\""+c.line+"\"><span class=\"rank\">"+String(i+1).padStart(2,"0")+"</span><span><strong>変更ブロック候補 #"+(i+1)+"</strong><code>"+escapeHtml(String(c.text))+"</code><small>変更後 "+c.line+"行目</small></span></button>").join("")+"<p class=\"heuristic-note\">差分とエラー位置からの推定です。実行時バグを断定するものではありません。</p>";
+  card.innerHTML=candidates.slice(0,8).map((c,i)=>"<button class=\"suspect-item\" type=\"button\" data-line=\""+c.line+"\"><span class=\"rank\">"+String(i+1).padStart(2,"0")+"</span><span><strong>"+(en?"Change block #":"変更ブロック候補 #")+(i+1)+"</strong><code>"+escapeHtml(String(c.text))+"</code><small>"+(en?"After line ":"変更後 ")+c.line+(en?"":"行目")+"</small></span></button>").join("")+"<p class=\"heuristic-note\">"+(en?"Heuristic estimate based on diffs and error locations. It does not prove the runtime bug cause.":"差分とエラー位置からの推定です。実行時バグを断定するものではありません。")+"</p>";
   card.querySelectorAll(".suspect-item").forEach(btn=>btn.addEventListener("click",()=>scrollToLine(Number(btn.dataset.line))));
 }
 async function renderSyntax(){
   const check=await currentCheck(afterEl.value),card=document.getElementById("syntaxCard");
   currentErrors=check.errors||[];
   currentErrorIndex=0;
+  const en=document.documentElement.lang==="en";
   if(check.ok){
-    card.innerHTML="<div class=\"syntax-ok\"><span class=\"syntax-icon\">✓</span><div><strong>構文は問題なさそうです。</strong><small>"+escapeHtml(check.message)+"</small></div></div>";
+    card.innerHTML="<div class=\"syntax-ok\"><span class=\"syntax-icon\">✓</span><div><strong>"+(en?"No obvious syntax errors.":"構文は問題なさそうです。")+"</strong><small>"+escapeHtml(check.message)+"</small></div></div>";
     return check;
   }
-  const nav=currentErrors.length>1?"<div class=\"error-nav\"><button id=\"prevErrorBtn\" type=\"button\">↑ 前のエラー</button><span id=\"errorNavCount\">1 / "+currentErrors.length+"</span><button id=\"nextErrorBtn\" type=\"button\">次のエラー ↓</button></div>":"";
-  const list=currentErrors.map((e,i)=>"<button class=\"error-item\" type=\"button\" data-error-index=\""+i+"\"><span>"+(i+1)+"</span><strong>"+escapeHtml(e.line?e.line+"行目":"位置不明")+"</strong><code>"+escapeHtml(e.message||"構文エラー")+"</code></button>").join("");
-  const locationText=check.line?"変更後コードの "+check.line+"行目付近"+(check.column?"（"+check.column+"列目）":""):"エラー位置を特定できませんでした。";
-  card.innerHTML="<div class=\"syntax-error\"><span class=\"syntax-icon\">!</span><div><strong>構文エラーを検出しました。</strong><small>"+escapeHtml(check.message)+"</small></div></div><ul class=\"error-list\"><li>推定位置："+escapeHtml(locationText)+"</li></ul>"+nav+"<div class=\"error-items\">"+list+"</div>";
+  const nav=currentErrors.length>1?"<div class=\"error-nav\"><button id=\"prevErrorBtn\" type=\"button\">"+(en?"↑ PREVIOUS ERROR":"↑ 前のエラー")+"</button><span id=\"errorNavCount\">1 / "+currentErrors.length+"</span><button id=\"nextErrorBtn\" type=\"button\">"+(en?"NEXT ERROR ↓":"次のエラー ↓")+"</button></div>":"";
+  const list=currentErrors.map((e,i)=>"<button class=\"error-item\" type=\"button\" data-error-index=\""+i+""><span>"+(i+1)+"</span><strong>"+(e.line?(en?"Line ":"")+" "+e.line+(en?"":"行目"):(en?"Unknown position":"位置不明"))+"</strong><code>"+escapeHtml(e.message||"Syntax error")+"</code></button>").join("");
+  const locationText=check.line?(en?"After line "+check.line+(check.column?" (column "+check.column+")":""):"変更後コードの "+check.line+"行目付近"+(check.column?"（"+check.column+"列目）":"")):(en?"Error position could not be determined.":"エラー位置を特定できませんでした。");
+  card.innerHTML="<div class=\"syntax-error\"><span class=\"syntax-icon\">!</span><div><strong>"+(en?"Syntax errors detected.":"構文エラーを検出しました。")+"</strong><small>"+escapeHtml(check.message)+"</small></div></div><ul class=\"error-list\"><li>"+(en?"Estimated position: ":"推定位置：")+escapeHtml(locationText)+"</li></ul>"+nav+"<div class=\"error-items\">"+list+"</div>";
   const goError=(idx)=>{if(!currentErrors.length)return;currentErrorIndex=(idx+currentErrors.length)%currentErrors.length;const e=currentErrors[currentErrorIndex];scrollToLine(e.line);document.getElementById("errorNavCount")&&(document.getElementById("errorNavCount").textContent=(currentErrorIndex+1)+" / "+currentErrors.length);};
   card.querySelectorAll(".error-item").forEach(btn=>btn.addEventListener("click",()=>goError(Number(btn.dataset.errorIndex))));
   document.getElementById("prevErrorBtn")?.addEventListener("click",()=>goError(currentErrorIndex-1));
@@ -362,7 +364,7 @@ function encodeShareData(data){
   return btoa(binary).replaceAll("+","-").replaceAll("/","_").replaceAll("=","");
 }
 function decodeShareData(value){
-  const base=value.replaceAll("-","+").replaceAll("_","/")+"===".slice((value.length+3)%4);
+  const base=value.replaceAll("-","+").replaceAll("_","/")+"=".repeat((4-(value.length%4))%4);
   const binary=atob(base);const bytes=Uint8Array.from(binary,c=>c.charCodeAt(0));return JSON.parse(new TextDecoder().decode(bytes));
 }
 function createShareUrl(){
