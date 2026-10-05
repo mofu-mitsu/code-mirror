@@ -263,7 +263,7 @@ function checkHTML(code){
 
   // A '<tag' with no closing '>' is invisible to tagPattern. Find it and report its real line.
   const remainder=code.slice(lastEnd);
-  const badLt=remainder.search(/<\\s*\\/?\\s*[A-Za-z][A-Za-z0-9:-]*(?:\\s|$)/);
+  const badLt=remainder.search(/<\s*\/?\s*[A-Za-z][A-Za-z0-9:-]*(?:\s|$)/);
   if(badLt>=0){
     const index=lastEnd+badLt,p=indexToLocation(code,index);
     errors.push({message:"HTMLタグの '>' が見つかりません。",line:p.line,column:p.column,index});
