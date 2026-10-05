@@ -10,7 +10,7 @@ const sampleBefore = `function greet(name) {
   console.log(message);
 }
 
-greet("Mitsuki");`;
+greet("いもむし");`;
 
 const sampleAfter = `function greet(name) {
   const message = "Hello, " + name;
@@ -18,7 +18,7 @@ const sampleAfter = `function greet(name) {
   console.log(message + emoji);
 }
 
-greet("Mitsuki");`;
+greet("いもむし");`;
 
 function splitLines(text) {
   return text.replace(/\r\n?/g, "\n").split("\n");
@@ -158,6 +158,55 @@ function renderDiff() {
   }).join("");
 }
 
+function findStructuralError(code) {
+  const stack=[];
+  for(let i=0;i<code.length;i++){
+    const ch=code[i];
+    if("({[".includes(ch)) stack.push({ch,index:i});
+    if(")}]".includes(ch)){
+      const expected={")":"(","}":"{","]":"["}[ch];
+      const top=stack[stack.length-1];
+      if(!top||top.ch!==expected) return {index:i,message:"Unexpected "+ch};
+      stack.pop();
+    }
+  }
+  if(stack.length) return {index:Math.max(0,code.length-1),message:"Unclosed "+stack[stack.length-1].ch};
+  return null;
+}
+function indexToLocation(code,index){
+  const lines=code.slice(0,index).split("\n");
+  const last=lines[lines.length-1];
+  return {line:lines.length,column:last.length+1};
+}
+function checkHTML(code){
+  if(!code.trim()) return {ok:true,message:"チェックするコードがありません。"};
+  const doc=new DOMParser().parseFromString(code,"text/html");
+  const err=doc.querySelector("parsererror");
+  return err?{ok:false,message:err.textContent.trim(),line:null,column:null}:{ok:true,message:"HTMLの構文エラーは見つかりませんでした。"};
+}
+function checkCSS(code){
+  if(!code.trim()) return {ok:true,message:"チェックするコードがありません。"};
+  const structural=findStructuralError(code);
+  if(structural){const p=indexToLocation(code,structural.index);return {ok:false,message:structural.message,line:p.line,column:p.column};}
+  try{const sheet=new CSSStyleSheet();sheet.replaceSync(code);return {ok:true,message:"CSSの構文エラーは見つかりませんでした。"};}
+  catch(e){return {ok:false,message:e.message||"CSS構文エラーです。",line:null,column:null};}
+}
+function currentCheck(code){
+  const lang=document.getElementById("languageSelect")?.value||"javascript";
+  if(lang==="html") return checkHTML(code);
+  if(lang==="css") return checkCSS(code);
+  return syntaxCheck(code);
+}
+function renderSuspects(rows,groups,check){
+  const section=document.getElementById("suspectsSection"),card=document.getElementById("suspectsCard");
+  if(!section||!card) return;
+  const added=rows.filter(r=>r.type==="add");
+  const candidates=added.map(row=>{const distance=check.line?Math.abs(row.right-check.line):99;let score=/[{}()[\]=;]|=>|function|const|let|var|return/.test(row.text)?2:0;if(check.line&&distance===0)score+=10;else if(check.line&&distance<=2)score+=5;return {row,distance,score};}).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,3);
+  if(!check.ok&&candidates.length){
+    section.classList.remove("hidden");
+    card.innerHTML=candidates.map((c,i)=>"<article class=\"suspect-item\"><span class=\"rank\">0"+(i+1)+"</span><div><strong>"+(c.distance===0?c.row.right+"行目の追加変更がエラー位置と一致しています。":"変更ブロック候補 #"+Math.min(groups.length,i+1))+"</strong><code>+ "+escapeHtml(c.row.text)+"</code></div></article>").join("")+"<p class=\"heuristic-note\">差分とエラー位置からの推定です。実行時バグを断定するものではありません。</p>";
+  }else section.classList.add("hidden");
+}
 function getSyntaxErrorLocation(error) {
   const message = String(error?.message || "");
   const stack = String(error?.stack || "");
@@ -201,7 +250,7 @@ function syntaxCheck(code) {
 }
 
 function renderSyntax() {
-  const check = syntaxCheck(afterEl.value);
+  const check = currentCheck(afterEl.value);
   const card = document.getElementById("syntaxCard");
 
   if (check.ok) {
@@ -238,6 +287,8 @@ function compare() {
   syntaxSection.classList.remove("hidden");
   renderDiff();
   renderSyntax();
+  const suspectRows=diffLines(beforeEl.value,afterEl.value);
+  renderSuspects(suspectRows,groupChanges(suspectRows),currentCheck(afterEl.value));
 }
 
 [beforeEl, afterEl].forEach(textarea => {
@@ -283,3 +334,8 @@ document.getElementById("clearBtn").addEventListener("click", () => {
 });
 
 updateCounts();
+
+
+document.getElementById("languageSelect")?.addEventListener("change",()=>{const v=document.getElementById("languageSelect").value;document.getElementById("compareMode").textContent=(v==="html"?"HTML":v==="css"?"CSS":"JavaScript")+" · 行単位比較";if(!result.classList.contains("hidden"))compare();});
+document.getElementById("langBtn")?.addEventListener("click",()=>{const next=document.documentElement.lang==="ja"?"en":"ja";document.documentElement.lang=next;document.getElementById("langBtn").textContent=next==="ja"?"EN":"日本語";localStorage.setItem("codeMirrorLocale",next);});
+(function(){const saved=localStorage.getItem("codeMirrorLocale");const ja=saved?saved==="ja":((navigator.language||"").toLowerCase().startsWith("ja")||Intl.DateTimeFormat().resolvedOptions().timeZone==="Asia/Tokyo");document.documentElement.lang=ja?"ja":"en";document.getElementById("langBtn").textContent=ja?"EN":"日本語";})();
