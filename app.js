@@ -127,7 +127,41 @@ function groupChanges(rows) {
 
 let diffViewMode="unified";
 function buildSideRows(rows){const result=[];for(let i=0;i<rows.length;i++){const row=rows[i];if(row.type==="del"&&rows[i+1]?.type==="add"){result.push({left:row,right:rows[i+1],type:"change"});i++;}else if(row.type==="add"&&rows[i+1]?.type==="del"){result.push({left:rows[i+1],right:row,type:"change"});i++;}else if(row.type==="del")result.push({left:row,right:null,type:"del"});else if(row.type==="add")result.push({left:null,right:row,type:"add"});else result.push({left:row,right:row,type:"ctx"});}return result;}
-function renderUnifiedDiff(rows){return rows.map(row=>{const number=row.type==="add"?row.right:row.left,mark=row.type==="add"?"+":row.type==="del"?"−":" ";return"<div class=\"diff-line "+row.type+"\"><span class=\"ln\">"+(number||"")+"</span><span class=\"code\"><span class=\"mark\">"+mark+"</span>"+escapeHtml(row.text)+"</span></div>";}).join("");}
+function charDiffPair(a,b){
+  if(a===b)return{left:escapeHtml(a),right:escapeHtml(b)};
+  if(a.length>700||b.length>700)return{left:'<mark class="inline-del">'+escapeHtml(a)+'</mark>',right:'<mark class="inline-add">'+escapeHtml(b)+'</mark>'};
+  const n=a.length,m=b.length,dp=Array.from({length:n+1},()=>new Uint16Array(m+1));
+  for(let i=n-1;i>=0;i--)for(let j=m-1;j>=0;j--)dp[i][j]=a[i]===b[j]?dp[i+1][j+1]+1:Math.max(dp[i+1][j],dp[i][j+1]);
+  const L=[],R=[];let i=0,j=0;
+  const push=(arr,cls,ch)=>{const last=arr[arr.length-1];if(last&&last.cls===cls)last.text+=ch;else arr.push({cls,text:ch});};
+  while(i<n&&j<m){
+    if(a[i]===b[j]){push(L,"",a[i]);push(R,"",b[j]);i++;j++;}
+    else if(dp[i+1][j]>=dp[i][j+1]){push(L,"inline-del",a[i++]);}
+    else{push(R,"inline-add",b[j++]);}
+  }
+  while(i<n)push(L,"inline-del",a[i++]);
+  while(j<m)push(R,"inline-add",b[j++]);
+  const render=arr=>arr.map(x=>x.cls?'<mark class="'+x.cls+'">'+escapeHtml(x.text)+'</mark>':escapeHtml(x.text)).join("");
+  return{left:render(L),right:render(R)};
+}
+function renderUnifiedDiff(rows){
+  let html="",index=0;
+  for(let i=0;i<rows.length;i++){
+    const row=rows[i];
+    if(row.type==="del"&&rows[i+1]?.type==="add"){
+      const pair=charDiffPair(row.text,rows[i+1].text);
+      html+="<div class=\"diff-line del\" data-diff-index=\""+index+"\"><span class=\"ln\">"+row.left+"</span><span class=\"code\"><span class=\"mark\">−</span>"+pair.left+"</span></div>";
+      html+="<div class=\"diff-line add\" data-diff-index=\""+index+"\"><span class=\"ln\">"+rows[i+1].right+"</span><span class=\"code\"><span class=\"mark\">+</span>"+pair.right+"</span></div>";
+      i++;index++;continue;
+    }
+    const number=row.type==="add"?row.right:row.left,mark=row.type==="add"?"+":row.type==="del"?"−":" ";
+    const code=row.type==="ctx"?escapeHtml(row.text):"<mark class=\""+(row.type==="add"?"inline-add":"inline-del")+"\">"+escapeHtml(row.text)+"</mark>";
+    html+="<div class=\"diff-line "+row.type+"\" data-diff-index=\""+index+"\"><span class=\"ln\">"+(number||"")+"</span><span class=\"code\"><span class=\"mark\">"+mark+"</span>"+code+"</span></div>";
+    if(row.type!=="ctx")index++;
+  }
+  return html;
+}
+
 function renderSideBySideDiff(rows){return buildSideRows(rows).map(pair=>{const left=pair.left,right=pair.right;return"<div class=\"side-row "+pair.type+"\"><div class=\"side-cell "+(left?.type||"")+"\"><span class=\"side-ln\">"+(left?.left||"")+"</span><code>"+(left?escapeHtml(left.text):"")+"</code></div><div class=\"side-cell "+(right?.type||"")+"\"><span class=\"side-ln\">"+(right?.right||"")+"</span><code>"+(right?escapeHtml(right.text):"")+"</code></div></div>";}).join("");}
 function renderDiff(){const uiLang=document.documentElement.lang==="en"?"en":"ja",rows=diffLines(beforeEl.value,afterEl.value),groups=groupChanges(rows),added=rows.filter(row=>row.type==="add").length,removed=rows.filter(row=>row.type==="del").length,changed=groups.filter(group=>group.hasAdd&&group.hasDel).length;document.getElementById("addedStat").textContent=added;document.getElementById("removedStat").textContent=removed;document.getElementById("changedStat").textContent=changed;document.getElementById("diffSummary").textContent=uiLang==="en"?(added===0&&removed===0?"No changes":"Added "+added+" · Removed "+removed+" · Changed "+changed):(added===0&&removed===0?"変更なし":"追加 "+added+"行 · 削除 "+removed+"行 · 変更 "+changed+"箇所");const output=document.getElementById("diffOutput");if(!rows.some(row=>row.type!=="ctx")){output.innerHTML="<div class=\"no-diff\">"+(uiLang==="en"?"No changes.":"変更はありません。")+"</div>";return;}output.classList.toggle("side-by-side",diffViewMode==="side");output.innerHTML=diffViewMode==="side"?renderSideBySideDiff(rows):renderUnifiedDiff(rows);}
 
@@ -183,16 +217,66 @@ function checkHTMLTags(code){
   const unclosed=stack[stack.length-1];if(unclosed){const p=indexToLocation(code,unclosed.index);return{message:"開始タグ <"+unclosed.name+"> が閉じられていません。",line:p.line,column:p.column,index:unclosed.index};}
   return null;
 }
-async function checkHTML(code){
+function checkHTML(code){
   if(!code.trim())return{ok:true,message:"チェックするコードがありません。",errors:[]};
-  const tagError=checkHTMLTags(code);
-  if(tagError)return{ok:false,message:tagError.message,line:tagError.line,column:tagError.column,errors:[tagError]};
-  try{
-    const errors=await parseLezer(code,"html","HTML");
-    return errors.length?{ok:false,message:errors[0].message,line:errors[0].line,column:errors[0].column,errors}:{ok:true,message:"HTMLのタグ対応・基本構文に問題は見つかりませんでした。",errors:[]};
-  }catch(error){
-    return{ok:true,message:"HTMLのタグ対応チェックは完了しました。",errors:[]};
+  const errors=[];
+  const tagPattern=/<!--(?:[\\s\\S]*?)-->|<![^>]*>|<\\s*(\\/?)\\s*([A-Za-z][A-Za-z0-9:-]*)([^>]*)>/g;
+  const stack=[];
+  const voidTags=new Set(["area","base","br","col","embed","hr","img","input","link","meta","param","source","track","wbr"]);
+  let match,lastEnd=0;
+  while((match=tagPattern.exec(code))){
+    const full=match[0];
+    if(full.startsWith("<!--")){lastEnd=tagPattern.lastIndex;continue;}
+    if(full.startsWith("<!")){
+      if(!/^<!doctype\\s+html\\s*>$/i.test(full.trim())){
+        const p=indexToLocation(code,match.index);
+        errors.push({message:"DOCTYPEの形式を確認してください。",line:p.line,column:p.column,index:match.index});
+      }
+      lastEnd=tagPattern.lastIndex;continue;
+    }
+    const closing=Boolean(match[1]),name=match[2].toLowerCase(),attrs=match[3]||"";
+    const p=indexToLocation(code,match.index);
+    // Attribute quote check: report the actual tag position instead of 1:0.
+    let q=null,escaped=false;
+    for(let k=0;k<attrs.length;k++){
+      const ch=attrs[k];
+      if(escaped){escaped=false;continue;}
+      if(ch==="\\"){escaped=true;continue;}
+      if(q){if(ch===q)q=null;}
+      else if(ch==="\""||ch==="'")q=ch;
+    }
+    if(q){
+      errors.push({message:"属性値の引用符が閉じられていません。",line:p.line,column:p.column,index:match.index});
+      lastEnd=tagPattern.lastIndex;continue;
+    }
+    const selfClosing=/\\/\\s*$/.test(attrs)||voidTags.has(name);
+    if(closing){
+      const top=stack[stack.length-1];
+      if(!top||top.name!==name){
+        errors.push({message:top?"閉じタグ </"+name+"> が <"+top.name+"> と対応していません。":"閉じタグ </"+name+"> に対応する開始タグがありません。",line:p.line,column:p.column,index:match.index});
+      }else stack.pop();
+    }else if(!selfClosing){
+      stack.push({name,index:match.index});
+    }
+    lastEnd=tagPattern.lastIndex;
   }
+
+  // A '<tag' with no closing '>' is invisible to tagPattern. Find it and report its real line.
+  const remainder=code.slice(lastEnd);
+  const badLt=remainder.search(/<\\s*\\/?\\s*[A-Za-z][A-Za-z0-9:-]*(?:\\s|$)/);
+  if(badLt>=0){
+    const index=lastEnd+badLt,p=indexToLocation(code,index);
+    errors.push({message:"HTMLタグの '>' が見つかりません。",line:p.line,column:p.column,index});
+  }
+
+  const unclosed=stack[stack.length-1];
+  if(unclosed){
+    const p=indexToLocation(code,unclosed.index);
+    errors.push({message:"開始タグ <"+unclosed.name+"> が閉じられていません。",line:p.line,column:p.column,index:unclosed.index});
+  }
+  errors.sort((a,b)=>a.index-b.index);
+  if(errors.length)return{ok:false,message:errors[0].message,line:errors[0].line,column:errors[0].column,errors};
+  return{ok:true,message:"HTMLのタグ対応・基本構文に問題は見つかりませんでした。",errors:[]};
 }
 function checkCSS(code){if(!code.trim())return{ok:true,message:"チェックするコードがありません。",errors:[]};try{const sheet=new CSSStyleSheet();sheet.replaceSync(code);return{ok:true,message:"CSSの構文エラーは見つかりませんでした。",errors:[]};}catch(error){const structural=findStructuralError(code),location=structural?indexToLocation(code,structural.index):getSyntaxErrorLocation(error),e={message:error.message||"CSS構文エラーです。",line:location.line,column:location.column,index:structural?.index??null};return{ok:false,message:e.message,line:e.line,column:e.column,errors:[e]};}}
 function checkPythonFallback(code){const lines=splitLines(code),errors=[];for(let i=0;i<lines.length;i++){const raw=lines[i],trimmed=raw.trim();if(!trimmed||trimmed.startsWith("#"))continue;const leading=raw.match(/^[ \t]*/)?.[0]||"";if(leading.includes("\t")&&leading.includes(" "))errors.push({message:"タブとスペースが混在したインデントです。",line:i+1,column:1,index:0});if(/^(if|elif|else|for|while|try|except|finally|with|def|class)\b/.test(trimmed)&&!trimmed.endsWith(":"))errors.push({message:"ブロック文の末尾に ':' がありません。",line:i+1,column:raw.length,index:0});}return errors;}
@@ -407,7 +491,7 @@ function openHelp(){const modal=document.getElementById("helpModal");if(!modal)r
 function closeHelp(){const modal=document.getElementById("helpModal");if(!modal)return;modal.classList.add("hidden");modal.setAttribute("aria-hidden","true");document.body.classList.remove("modal-open");}
 function applyLocale(){
   const lang=document.documentElement.lang==="en"?"en":"ja",x=UI_TEXT[lang];
-  const map={localStatus:x.status,sampleBtn:x.sample,clearBtn:x.clear,shareBtn:x.share,langBtn:x.lang,eyebrowText:x.eyebrow,heroTitle:x.title,heroText:x.hero,languageNote:x.languageNote,languageSelect:x.target,targetDescription:x.targetDescription,helpBtn:x.help,feature1Title:x.feature1Title,feature1Text:x.feature1Text,feature2Title:x.feature2Title,feature2Text:x.feature2Text,feature3Title:x.feature3Title,feature3Text:x.feature3Text,helpTitle:x.helpTitle,helpIntro:x.helpIntro,helpIntro:x.helpIntro,helpStep1Title:x.help1t,helpStep1:x.help1,helpStep2Title:x.help2t,helpStep2:x.help2,helpStep3Title:x.help3t,helpStep3:x.help3,helpStep4Title:x.help4t,helpStep4:x.help4,helpNote:x.helpNote,beforeLabel:x.before,beforeSub:x.beforeSub,afterLabel:x.after,afterSub:x.afterSub,tabHint:x.tab,compareMode:x.mode,compareText:x.compare,beforeCountLabel:x.beforeCount,afterCountLabel:x.afterCount,beforeUnit:x.unit,afterUnit:x.unit,mapLabel:x.map,addedLabel:x.add,removedLabel:x.remove,changedLabel:x.changed,addedUnit:x.unit,removedUnit:x.unit,changedUnit:x.changedUnit,diffTitle:x.diff,unifiedViewBtn:x.unified,sideViewBtn:x.side,prevDiffBtn:x.prevDiff,nextDiffBtn:x.nextDiff,suspectLabel:x.suspect,checkLabel:x.check,prevErrorBtn:x.prevError,nextErrorBtn:x.nextError,footerTitle:x.footerTitle,footerLocal:x.footerLocal};
+  const map={localStatus:x.status,sampleBtn:x.sample,clearBtn:x.clear,shareBtn:x.share,langBtn:x.lang,eyebrowText:x.eyebrow,heroTitle:x.title,heroText:x.hero,languageNote:x.languageNote,languageSelect:x.target,targetDescription:x.targetDescription,helpBtnText:x.help,shareBtnText:x.share,sampleBtnText:x.sample,clearBtnText:x.clear,feature1Title:x.feature1Title,feature1Text:x.feature1Text,feature2Title:x.feature2Title,feature2Text:x.feature2Text,feature3Title:x.feature3Title,feature3Text:x.feature3Text,helpTitle:x.helpTitle,helpIntro:x.helpIntro,helpIntro:x.helpIntro,helpStep1Title:x.help1t,helpStep1:x.help1,helpStep2Title:x.help2t,helpStep2:x.help2,helpStep3Title:x.help3t,helpStep3:x.help3,helpStep4Title:x.help4t,helpStep4:x.help4,helpNote:x.helpNote,beforeLabel:x.before,beforeSub:x.beforeSub,afterLabel:x.after,afterSub:x.afterSub,tabHint:x.tab,compareMode:x.mode,compareText:x.compare,beforeCountLabel:x.beforeCount,afterCountLabel:x.afterCount,beforeUnit:x.unit,afterUnit:x.unit,mapLabel:x.map,addedLabel:x.add,removedLabel:x.remove,changedLabel:x.changed,addedUnit:x.unit,removedUnit:x.unit,changedUnit:x.changedUnit,diffTitle:x.diff,unifiedViewBtn:x.unified,sideViewBtn:x.side,prevDiffBtn:x.prevDiff,nextDiffBtn:x.nextDiff,suspectLabel:x.suspect,checkLabel:x.check,prevErrorBtn:x.prevError,nextErrorBtn:x.nextError,footerTitle:x.footerTitle,footerLocal:x.footerLocal};
   Object.entries(map).forEach(([id,text])=>{const el=document.getElementById(id);if(!el)return;if(id==="languageSelect")el.setAttribute("aria-label",text);else el.innerHTML=text;});
   document.title=lang==="en"?"CODE MIRROR | Code Diff & Syntax Error Investigator":"CODE MIRROR｜コード差分・構文エラーを調べる開発者向けツール";const desc=lang==="en"?"Compare code changes, inspect diffs, and investigate syntax errors and suspected bug causes.":"変更前・変更後のコードを比較し、差分・構文エラー・バグ原因候補を調査できる開発者向けオンラインツール。";document.querySelector('meta[name="description"]')?.setAttribute("content",desc);document.querySelector('meta[property="og:title"]')?.setAttribute("content",document.title);document.querySelector('meta[property="og:description"]')?.setAttribute("content",desc);document.querySelector('meta[name="twitter:title"]')?.setAttribute("content",document.title);document.querySelector('meta[name="twitter:description"]')?.setAttribute("content",desc);
   document.documentElement.lang=lang;
