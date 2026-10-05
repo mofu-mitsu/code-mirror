@@ -249,7 +249,7 @@ function checkHTML(code){
       errors.push({message:"属性値の引用符が閉じられていません。",line:p.line,column:p.column,index:match.index});
       lastEnd=tagPattern.lastIndex;continue;
     }
-    const selfClosing=/\\/\\s*$/.test(attrs)||voidTags.has(name);
+    const selfClosing=/\/\s*$/.test(attrs)||voidTags.has(name);
     if(closing){
       const top=stack[stack.length-1];
       if(!top||top.name!==name){
