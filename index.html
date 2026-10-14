@@ -58,6 +58,9 @@
       <h1 id="heroTitle">何が変わった？<br><em>壊れた場所を探す。</em></h1>
       <p id="heroText">変更前と変更後のコードを並べて、追加・削除された行を比較。さらに変更後のコードに構文エラーがないかチェックします。</p>
     </section>
+    <nav class="sibling-tools" aria-label="関連ツール">
+      <a href="https://code-preview-lovat.vercel.app/" target="_blank" rel="noopener noreferrer"><span class="tool-link-icon">↗</span><span><strong>Code Preview</strong><small>コードを実行前にプレビュー</small></span><b>姉妹ツール →</b></a>
+    </nav>
     <section class="feature-strip" aria-label="CODE MIRRORの特徴">
       <article><span>01</span><div><strong id="feature1Title">差分を見つける</strong><p id="feature1Text">追加・削除・変更ブロックを整理して表示します。</p></div></article>
       <article><span>02</span><div><strong id="feature2Title">エラーを探す</strong><p id="feature2Text">対応言語の構文チェックから行・列を確認します。</p></div></article>
@@ -88,6 +91,7 @@
 
     <section class="control-row">
       <button id="compareBtn" class="primary-btn" type="button"><span id="compareText">比較して原因候補を探す</span><b>→</b></button>
+      <button id="singleCheckBtn" class="secondary-btn" type="button"><span id="singleCheckText">コード単体をチェック</span> <b>✓</b></button>
       <div class="mini-stats">
         <div><small id="beforeCountLabel">変更前</small><strong id="beforeCount">0</strong><span id="beforeUnit">行</span></div>
         <div><small id="afterCountLabel">変更後</small><strong id="afterCount">0</strong><span id="afterUnit">行</span></div>
