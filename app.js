@@ -448,14 +448,26 @@ document.getElementById("singleCheckBtn")?.addEventListener("click",checkSingleC
 
 
 
-function resetEditor(editor, lineNumbers, label){
-  editor.value="";
-  lineNumbers.textContent="1";
-  editor.dispatchEvent(new Event("input",{bubbles:true}));
-  showToast(document.documentElement.lang==="en"?label+" code cleared.":label+"のコードをリセットしたよ。","success");
+function resetEditor(editor, label){
+  if (!editor) return;
+  editor.value = "";
+  updateCounts();
+  result.classList.add("hidden");
+  syntaxSection.classList.add("hidden");
+  document.getElementById("suspectsSection")?.classList.add("hidden");
+  showToast(document.documentElement.lang === "en" ? label + " code cleared." : label + "のコードをリセットしたよ。", "success");
+  editor.focus({ preventScroll: true });
 }
-document.getElementById("resetBeforeBtn")?.addEventListener("click",()=>resetEditor(beforeEl,beforeLines,"Before"));
-document.getElementById("resetAfterBtn")?.addEventListener("click",()=>resetEditor(afterEl,afterLines,"After"));
+document.getElementById("resetBeforeBtn")?.addEventListener("click", (event) => {
+  event.preventDefault();
+  event.stopPropagation();
+  resetEditor(beforeEl, "Before");
+});
+document.getElementById("resetAfterBtn")?.addEventListener("click", (event) => {
+  event.preventDefault();
+  event.stopPropagation();
+  resetEditor(afterEl, "After");
+});
 
 [beforeEl, afterEl].forEach(textarea => {
   textarea.addEventListener("input", updateCounts);
