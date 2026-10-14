@@ -424,17 +424,24 @@ async function compare(){result.classList.remove("hidden");syntaxSection.classLi
 
 
 async function checkSingleCode(){
-  const code=afterEl.value;
+  // 単体チェックでは、入力されている方のエディタを優先して使う。
+  // 変更後が空なら変更前を検査対象にするため、比較用の2枠を埋める必要はない。
+  const code=afterEl.value.trim() ? afterEl.value : beforeEl.value;
+  const target=afterEl.value.trim() ? afterEl : beforeEl;
   if(!code.trim()){
-    showToast(document.documentElement.lang==="en"?"Paste code into the editor first.":"先にコードを入力してね。","info");
-    afterEl.focus();return;
+    showToast(document.documentElement.lang==="en"?"Paste code into either editor first.":"変更前・変更後のどちらか一方にコードを入力してね。","info");
+    target.focus();return;
   }
+  // renderSyntax() が読む入力欄へ検査対象を一時的に反映
+  const originalAfter=afterEl.value;
+  afterEl.value=code;
   result.classList.add("hidden");
   document.getElementById("suspectsSection")?.classList.add("hidden");
   syntaxSection.classList.remove("hidden");
   const heading=document.querySelector("#syntaxSection .section-label b");
   if(heading)heading.textContent=document.documentElement.lang==="en"?"STANDALONE SYNTAX CHECK":"コード単体チェック";
   await renderSyntax();
+  afterEl.value=originalAfter;
   syntaxSection.scrollIntoView({behavior:"smooth",block:"start"});
 }
 document.getElementById("singleCheckBtn")?.addEventListener("click",checkSingleCode);
