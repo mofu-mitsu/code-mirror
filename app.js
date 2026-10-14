@@ -400,8 +400,8 @@ function renderSuspects(rows,groups,check){
   card.innerHTML=candidates.slice(0,8).map((c,i)=>"<button class=\"suspect-item\" type=\"button\" data-line=\""+c.line+"\"><span class=\"rank\">"+String(i+1).padStart(2,"0")+"</span><span><strong>"+(en?"Change block #":"変更ブロック候補 #")+(i+1)+"</strong><code>"+escapeHtml(String(c.text))+"</code><small>"+(en?"After line ":"変更後 ")+c.line+(en?"":"行目")+"</small></span></button>").join("")+"<p class=\"heuristic-note\">"+(en?"Heuristic estimate based on diffs and error locations. It does not prove the runtime bug cause.":"差分とエラー位置からの推定です。実行時バグを断定するものではありません。")+"</p>";
   card.querySelectorAll(".suspect-item").forEach(btn=>btn.addEventListener("click",()=>scrollToLine(Number(btn.dataset.line))));
 }
-async function renderSyntax(){
-  const check=await currentCheck(afterEl.value),card=document.getElementById("syntaxCard");
+async function renderSyntax(codeToCheck=afterEl.value){
+  const check=await currentCheck(codeToCheck),card=document.getElementById("syntaxCard");
   currentErrors=check.errors||[];
   currentErrorIndex=0;
   const en=document.documentElement.lang==="en";
@@ -424,28 +424,38 @@ async function compare(){result.classList.remove("hidden");syntaxSection.classLi
 
 
 async function checkSingleCode(){
-  // 単体チェックでは、入力されている方のエディタを優先して使う。
-  // 変更後が空なら変更前を検査対象にするため、比較用の2枠を埋める必要はない。
-  const code=afterEl.value.trim() ? afterEl.value : beforeEl.value;
-  const target=afterEl.value.trim() ? afterEl : beforeEl;
-  if(!code.trim()){
+  // Focus the editor the user actually filled; if both contain code, prefer B.
+  const hasAfter=!!afterEl.value.trim(),hasBefore=!!beforeEl.value.trim();
+  const code=hasAfter?afterEl.value:beforeEl.value;
+  const target=hasAfter?afterEl:beforeEl;
+  if(!hasAfter&&!hasBefore){
     showToast(document.documentElement.lang==="en"?"Paste code into either editor first.":"変更前・変更後のどちらか一方にコードを入力してね。","info");
-    target.focus();return;
+    afterEl.focus();return;
   }
-  // renderSyntax() が読む入力欄へ検査対象を一時的に反映
-  const originalAfter=afterEl.value;
-  afterEl.value=code;
   result.classList.add("hidden");
   document.getElementById("suspectsSection")?.classList.add("hidden");
   syntaxSection.classList.remove("hidden");
   const heading=document.querySelector("#syntaxSection .section-label b");
   if(heading)heading.textContent=document.documentElement.lang==="en"?"STANDALONE SYNTAX CHECK":"コード単体チェック";
-  await renderSyntax();
-  afterEl.value=originalAfter;
+  await renderSyntax(code);
+  target.focus({preventScroll:true});
   syntaxSection.scrollIntoView({behavior:"smooth",block:"start"});
 }
 document.getElementById("singleCheckBtn")?.addEventListener("click",checkSingleCode);
 
+
+document.getElementById("singleCheckBtn")?.addEventListener("click",checkSingleCode);
+
+
+
+function resetEditor(editor, lineNumbers, label){
+  editor.value="";
+  lineNumbers.textContent="1";
+  editor.dispatchEvent(new Event("input",{bubbles:true}));
+  showToast(document.documentElement.lang==="en"?label+" code cleared.":label+"のコードをリセットしたよ。","success");
+}
+document.getElementById("resetBeforeBtn")?.addEventListener("click",()=>resetEditor(beforeEl,beforeLines,"Before"));
+document.getElementById("resetAfterBtn")?.addEventListener("click",()=>resetEditor(afterEl,afterLines,"After"));
 
 [beforeEl, afterEl].forEach(textarea => {
   textarea.addEventListener("input", updateCounts);
