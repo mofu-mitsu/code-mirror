@@ -71,7 +71,7 @@
       <div class="toolbar"><div class="target-label"><span class="target-icon">✓</span><div><label for="languageSelect">チェック対象</label><small id="targetDescription">構文チェックする言語を選択</small></div></div><select id="languageSelect"><option value="javascript">JavaScript</option><option value="typescript">TypeScript</option><option value="python">Python</option><option value="html">HTML</option><option value="css">CSS</option><option value="php">PHP</option><option value="ruby">Ruby</option><option value="c">C</option><option value="cpp">C++</option><option value="csharp">C#</option><option value="java">Java</option><option value="go">Go</option><option value="rust">Rust</option><option value="json">JSON</option></select><span id="languageNote">差分比較はすべてのテキストで利用できます。</span></div>
       <div class="editor-head">
         <div class="editor-title"><span class="step">A</span><div><strong id="beforeLabel">変更前</strong><small id="beforeSub">元のコード</small></div></div>
-        <div class="editor-title"><span class="step after">B</span><div><strong id="afterLabel">変更後</strong><small id="afterSub">修正したコード</small></div></div>
+        <div class="editor-title"><span class="step after">B</span><div class="editor-title-copy"><strong id="afterLabel">変更後</strong><small id="afterSub">修正したコード</small></div><button class="editor-reset" id="resetAfterBtn" type="button" aria-label="変更後のコードをリセット">リセット</button></div>
       </div>
       <div class="editors">
         <div class="editor-wrap">
